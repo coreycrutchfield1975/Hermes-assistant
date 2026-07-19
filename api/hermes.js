@@ -87,7 +87,35 @@ export default async function handler(req, res) {
       return res.json({ response: "Opening weather...", action: 'open', url: 'https://google.com/search?q=weather' });
     }
 
-    // ── Complex commands → Send to Telegram, tagged so Hermes can reply ──
+    // ── Complex commands → Try Groq AI first (we have the key now) ──
+    const gkey = process.env.GROQ_API_KEY;
+    if (gkey) {
+      try {
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + gkey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              { role: 'system', content: 'You are KITT from Knight Rider. You are concise and clever. If the user asks you to do something you cannot do yourself, say "Let me get Hermes on this." Otherwise just answer naturally.' },
+              { role: 'user', content: cmd }
+            ],
+            max_tokens: 150,
+            temperature: 0.7
+          })
+        });
+        if (groqRes.ok) {
+          const data = await groqRes.json();
+          const reply = data.choices[0].message.content.trim();
+          // Check if KITT says it needs Hermes — if so, fall through to bridge
+          if (!reply.toLowerCase().includes('let me get hermes') && !reply.toLowerCase().includes('let me check with hermes')) {
+            return res.json({ response: reply, action: 'speak' });
+          }
+        }
+      } catch (e) {}
+    }
+
+    // ── Telegram bridge (for tasks KITT can't answer) ──
     const teleRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -111,30 +139,6 @@ export default async function handler(req, res) {
       const errText = await teleRes.text();
       console.error('Telegram send failed:', teleRes.status, errText);
     }
-
-    // ── Fallback: Groq AI conversation ──
-    try {
-      const gkey = process.env.GROQ_API_KEY;
-      if (gkey) {
-        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + gkey, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [
-              { role: 'system', content: 'You are KITT from Knight Rider. You are concise and clever. If the user asks you to do something you cannot do yourself, say "Let me get Hermes on this." Otherwise just answer naturally.' },
-              { role: 'user', content: cmd }
-            ],
-            max_tokens: 120,
-            temperature: 0.7
-          })
-        });
-        if (groqRes.ok) {
-          const data = await groqRes.json();
-          return res.json({ response: data.choices[0].message.content.trim(), action: 'speak' });
-        }
-      }
-    } catch (e) {}
 
     return res.json({ response: 'Try again.', action: 'speak' });
 
