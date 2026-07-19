@@ -1,8 +1,8 @@
-// Hermes Bridge v4 — KITT talks to Telegram, Hermes replies, KITT gets answer
-// Sends command to Telegram, polls for Hermes' response, returns it
+// Hermes Bridge v5 — KITT talks to local Hermes server directly
+// No Telegram middleman, no polling — instant Jarvis-style response
+// Quick commands handled locally, complex ones go to the Hermes bridge
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const CHAT_ID = '8973134274';
+const HERMES_BRIDGE_URL = process.env.HERMES_BRIDGE_URL || '';
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 export default async function handler(req, res) {
@@ -17,44 +17,8 @@ export default async function handler(req, res) {
   try {
     const { command, action, message_id } = req.body || {};
 
-    // ── POLL: check for any NEW message after the one we sent ──
-    if (action === 'poll' && message_id) {
-      const pollRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ allowed_updates: ['message'], timeout: 0 })
-      });
-
-      if (pollRes.ok) {
-        const data = await pollRes.json();
-        const updates = data.result || [];
-
-        // Find the newest message from Hermes (bot's own messages via telegram)
-        // that was sent AFTER our bridge message
-        let latestReply = null;
-        let latestDate = 0;
-        for (const update of updates) {
-          const msg = update.message;
-          if (msg &&
-              msg.chat.id.toString() === CHAT_ID &&
-              msg.date > latestDate &&
-              msg.message_id > message_id &&
-              msg.text &&
-              !msg.text.startsWith('🎤')) {  // skip the KITT voice commands
-            latestReply = msg;
-            latestDate = msg.date;
-          }
-        }
-
-        if (latestReply) {
-          return res.json({
-            response: latestReply.text,
-            action: 'speak',
-            received: true
-          });
-        }
-      }
-
+    // ── POLL: deprecated (no longer needed without Telegram bridge) ──
+    if (action === 'poll') {
       return res.json({ response: null, action: 'wait', received: false });
     }
 
@@ -64,7 +28,7 @@ export default async function handler(req, res) {
 
     const c = cmd.toLowerCase();
 
-    // Quick commands (handled instantly by KITT)
+    // Quick commands (handled instantly for speed)
     if (/\b(?:time|what time)\b/.test(c) && !/what can you/.test(c)) {
       return res.json({ response: "It's " + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ".", action: 'speak' });
     }
@@ -97,60 +61,53 @@ export default async function handler(req, res) {
       return res.json({ response: "Opening weather...", action: 'open', url: 'https://google.com/search?q=weather' });
     }
 
-    // ── Complex commands → Try Groq AI first (we have the key now) ──
-    const gkey = process.env.GROQ_API_KEY;
-    if (gkey) {
+    // ── Try Hermes bridge (local server via Cloudflare tunnel) ──
+    if (HERMES_BRIDGE_URL) {
+      try {
+        const bridgeRes = await fetch(HERMES_BRIDGE_URL + '/command', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: cmd, history: [] }),
+          signal: AbortSignal.timeout(60000) // 60s timeout
+        });
+
+        if (bridgeRes.ok) {
+          const data = await bridgeRes.json();
+          if (data.response) {
+            // Clean up Hermes response — remove session_id footer
+            const clean = data.response.replace(/\r?\nsession_id:.*/, '').trim();
+            return res.json({ response: clean, action: 'speak' });
+          }
+        }
+      } catch (e) {
+        console.error('Bridge call failed:', e.message);
+      }
+    }
+
+    // ── Fallback: Groq AI conversation ──
+    if (GROQ_API_KEY) {
       try {
         const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + gkey, 'Content-Type': 'application/json' },
+          headers: { 'Authorization': 'Bearer ' + GROQ_API_KEY, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model: 'llama-3.3-70b-versatile',
             messages: [
-              { role: 'system', content: 'You are KITT from Knight Rider. You are concise and clever. If the user asks you to do something you cannot do yourself, say "Let me get Hermes on this." Otherwise just answer naturally.' },
+              { role: 'system', content: 'You are KITT from Knight Rider. You are concise and clever. Answer naturally.' },
               { role: 'user', content: cmd }
             ],
-            max_tokens: 150,
+            max_tokens: 200,
             temperature: 0.7
           })
         });
         if (groqRes.ok) {
           const data = await groqRes.json();
-          const reply = data.choices[0].message.content.trim();
-          // Check if KITT says it needs Hermes — if so, fall through to bridge
-          if (!reply.toLowerCase().includes('let me get hermes') && !reply.toLowerCase().includes('let me check with hermes')) {
-            return res.json({ response: reply, action: 'speak' });
-          }
+          return res.json({ response: data.choices[0].message.content.trim(), action: 'speak' });
         }
       } catch (e) {}
     }
 
-    // ── Telegram bridge (for tasks KITT can't answer) ──
-    const teleRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: CHAT_ID,
-        text: `🎤 Voice command from KITT:\n\n"${cmd}"`,
-        parse_mode: 'HTML'
-      })
-    });
-
-    if (teleRes.ok) {
-      const teleData = await teleRes.json();
-      const sentMessageId = teleData.result.message_id;
-
-      return res.json({
-        response: 'One moment — tapping Hermes for that.',
-        action: 'bridge',
-        message_id: sentMessageId
-      });
-    } else {
-      const errText = await teleRes.text();
-      console.error('Telegram send failed:', teleRes.status, errText);
-    }
-
-    return res.json({ response: 'Try again.', action: 'speak' });
+    return res.json({ response: 'System offline. Try again when connected.', action: 'speak' });
 
   } catch (err) {
     console.error('Bridge error:', err);
