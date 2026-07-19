@@ -93,7 +93,7 @@ export default async function handler(req, res) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: CHAT_ID,
-        text: '🎤 Voice command from KITT:\n\n"' + cmd + '"',
+        text: `🎤 Voice command from KITT:\n\n"${cmd}"`,
         parse_mode: 'HTML'
       })
     });
