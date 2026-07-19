@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d001a"/>
+      <stop offset="100%" stop-color="#1a0533"/>
+    </linearGradient>
+    <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b3db8"/>
+      <stop offset="40%" stop-color="#5a189a"/>
+      <stop offset="100%" stop-color="#3c096c"/>
+    </linearGradient>
+    <linearGradient id="wingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7b2d8b"/>
+      <stop offset="50%" stop-color="#5a189a"/>
+      <stop offset="100%" stop-color="#2d0054"/>
+    </linearGradient>
+    <linearGradient id="fireGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ff2200"/>
+      <stop offset="30%" stop-color="#ff6600"/>
+      <stop offset="60%" stop-color="#ffaa00"/>
+      <stop offset="85%" stop-color="#ffdd44"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </linearGradient>
+    <linearGradient id="hornGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#7b2d8b"/>
+      <stop offset="100%" stop-color="#c77dff"/>
+    </linearGradient>
+    <radialGradient id="eyeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffee55"/>
+      <stop offset="40%" stop-color="#ffaa00"/>
+      <stop offset="100%" stop-color="#ff4400"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="fireGlow">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)" rx="64"/>
+  <!-- Stars -->
+  <circle cx="30" cy="40" r="1.5" fill="#c77dff" opacity="0.6"/>
+  <circle cx="80" cy="90" r="1" fill="#e0aaff" opacity="0.4"/>
+  <circle cx="120" cy="30" r="2" fill="#9d4edd" opacity="0.5"/>
+  <circle cx="400" cy="50" r="1.5" fill="#c77dff" opacity="0.5"/>
+  <circle cx="480" cy="100" r="1" fill="#e0aaff" opacity="0.3"/>
+  <circle cx="450" cy="30" r="2" fill="#9d4edd" opacity="0.4"/>
+  <circle cx="200" cy="20" r="1" fill="#c77dff" opacity="0.5"/>
+  <circle cx="350" cy="80" r="1.5" fill="#e0aaff" opacity="0.4"/>
+  <!-- Dragon center group -->
+  <g transform="translate(256,240)">
+    <!-- Tail -->
+    <path d="M-60,40 Q-100,50 -130,30 Q-150,15 -155,35 Q-160,55 -140,65 Q-110,78 -80,62 Q-65,52 -55,44Z" fill="url(#bodyGrad)"/>
+    <path d="M-155,35 L-172,22 L-162,42Z" fill="#ff4500"/>
+    <!-- Back legs -->
+    <path d="M-30,70 Q-38,90 -45,105 Q-50,115 -42,118 L-32,114 Q-28,105 -24,92Z" fill="#3c096c"/>
+    <path d="M30,70 Q38,90 45,105 Q50,115 42,118 L32,114 Q28,105 24,92Z" fill="#3c096c"/>
+    <!-- Body underbelly -->
+    <ellipse cx="0" cy="30" rx="72" ry="52" fill="url(#bodyGrad)"/>
+    <ellipse cx="0" cy="42" rx="38" ry="32" fill="#e0aaff" opacity="0.35"/>
+    <!-- Front legs -->
+    <path d="M-42,30 Q-55,48 -65,62 Q-70,72 -60,75 L-50,72 Q-46,62 -42,48Z" fill="#4a1580"/>
+    <path d="M42,30 Q55,48 65,62 Q70,72 60,75 L50,72 Q46,62 42,48Z" fill="#4a1580"/>
+    <!-- Wings -->
+    <g opacity="0.85">
+      <path d="M-38,-8 Q-100,-55 -140,-95 L-125,-85 Q-115,-92 -105,-100 L-95,-90 Q-85,-100 -75,-105 L-65,-92 Q-55,-95 -48,-85 L-42,-60 Q-38,-35 -38,-8Z" fill="url(#wingGrad)" stroke="#7b2d8b" stroke-width="0.8"/>
+      <path d="M-38,-8 Q-90,-40 -125,-75 L-100,-65 Q-85,-75 -72,-80 L-60,-70 Q-50,-60 -42,-40Z" fill="#4a1580" opacity="0.3"/>
+      <path d="M38,-8 Q100,-55 140,-95 L125,-85 Q115,-92 105,-100 L95,-90 Q85,-100 75,-105 L65,-92 Q55,-95 48,-85 L42,-60 Q38,-35 38,-8Z" fill="url(#wingGrad)" stroke="#7b2d8b" stroke-width="0.8"/>
+      <path d="M38,-8 Q90,-40 125,-75 L100,-65 Q85,-75 72,-80 L60,-70 Q50,-60 42,-40Z" fill="#4a1580" opacity="0.3"/>
+    </g>
+    <!-- Neck -->
+    <path d="M-22,-18 Q-18,-48 -12,-78 Q-6,-100 0,-105 Q6,-100 12,-78 Q18,-48 22,-18Z" fill="url(#bodyGrad)"/>
+  </g>
+  <!-- Head -->
+  <g transform="translate(256,120)">
+    <ellipse cx="0" cy="0" rx="34" ry="27" fill="#5a189a"/>
+    <!-- Snout -->
+    <ellipse cx="0" cy="12" rx="20" ry="13" fill="#5a189a"/>
+    <ellipse cx="0" cy="14" rx="14" ry="7" fill="#4a1580"/>
+    <!-- Nostrils -->
+    <ellipse cx="-5" cy="17" rx="2.5" ry="1.8" fill="#1a0533"/>
+    <ellipse cx="5" cy="17" rx="2.5" ry="1.8" fill="#1a0533"/>
+    <!-- Nose bridge -->
+    <ellipse cx="0" cy="8" rx="6" ry="4" fill="#7b2d8b" opacity="0.4"/>
+    <!-- Eyes with glow -->
+    <g filter="url(#glow)">
+      <ellipse cx="-14" cy="-5" rx="8" ry="7" fill="#1a0533"/>
+      <ellipse cx="14" cy="-5" rx="8" ry="7" fill="#1a0533"/>
+      <ellipse cx="-14" cy="-5" rx="5.5" ry="4.5" fill="url(#eyeGlow)"/>
+      <ellipse cx="14" cy="-5" rx="5.5" ry="4.5" fill="url(#eyeGlow)"/>
+      <!-- Pupils -->
+      <ellipse cx="-14" cy="-5" rx="2.5" ry="3.5" fill="#0d001a"/>
+      <ellipse cx="14" cy="-5" rx="2.5" ry="3.5" fill="#0d001a"/>
+      <ellipse cx="-12.5" cy="-6.5" rx="1.5" ry="1.5" fill="#fff" opacity="0.85"/>
+      <ellipse cx="15.5" cy="-6.5" rx="1.5" ry="1.5" fill="#fff" opacity="0.85"/>
+    </g>
+    <!-- Eyebrows -->
+    <path d="M-24,-12 Q-14,-20 -6,-12" stroke="#2d0054" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <path d="M6,-12 Q14,-20 24,-12" stroke="#2d0054" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <!-- Scales on forehead -->
+    <path d="M-8,-18 Q0,-23 8,-18" stroke="#9d4edd" stroke-width="1.2" fill="none" opacity="0.5"/>
+    <path d="M-5,-14 Q0,-18 5,-14" stroke="#c77dff" stroke-width="0.8" fill="none" opacity="0.4"/>
+    <path d="M-10,-22 Q0,-28 10,-22" stroke="#7b2d8b" stroke-width="1" fill="none" opacity="0.3"/>
+    <!-- Left horn -->
+    <path d="M-20,-20 Q-28,-42 -22,-55 Q-18,-48 -16,-35 L-18,-22Z" fill="url(#hornGrad)" stroke="#9d4edd" stroke-width="0.5"/>
+    <path d="M-22,-55 L-20,-58 L-16,-50Z" fill="#c77dff" opacity="0.5"/>
+    <!-- Right horn -->
+    <path d="M20,-20 Q28,-42 22,-55 Q18,-48 16,-35 L18,-22Z" fill="url(#hornGrad)" stroke="#9d4edd" stroke-width="0.5"/>
+    <path d="M22,-55 L20,-58 L16,-50Z" fill="#c77dff" opacity="0.5"/>
+    <!-- Ear horns -->
+    <path d="M-30,-8 Q-40,-22 -35,-28 Q-32,-20 -28,-10Z" fill="#5a189a" stroke="#7b2d8b" stroke-width="0.5"/>
+    <path d="M30,-8 Q40,-22 35,-28 Q32,-20 28,-10Z" fill="#5a189a" stroke="#7b2d8b" stroke-width="0.5"/>
+    <!-- Spikes on head -->
+    <path d="M-18,-15 L-22,-22 L-16,-17Z" fill="#c77dff" opacity="0.3"/>
+    <path d="M18,-15 L22,-22 L16,-17Z" fill="#c77dff" opacity="0.3"/>
+    <!-- Fire -->
+    <g filter="url(#fireGlow)" opacity="0.8">
+      <path d="M-5,22 Q-10,28 -3,34 Q3,40 0,48 Q-4,55 2,62 Q8,58 5,50 Q3,42 7,36 Q11,30 5,22Z" fill="url(#fireGrad)" opacity="0.85"/>
+      <path d="M-2,22 Q-5,30 0,38 Q4,46 1,54 Q-2,48 1,40 Q4,34 0,22Z" fill="#ffd700" opacity="0.9"/>
+      <path d="M-1.5,24 L0,48 L1.5,24Z" fill="#ffffff" opacity="0.7"/>
+    </g>
+  </g>
+  <!-- Title -->
+  <text x="256" y="450" text-anchor="middle" font-family="Georgia,serif" font-size="52" font-weight="bold" fill="#c77dff" opacity="0.95" letter-spacing="4">HERMES</text>
+  <text x="256" y="475" text-anchor="middle" font-family="Georgia,serif" font-size="14" fill="#9d4edd" opacity="0.6" letter-spacing="6">DRAGON ASSISTANT</text>
+</svg>

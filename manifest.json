@@ -1,0 +1,23 @@
+{
+  "name": "Hermes Dragon Voice Assistant",
+  "short_name": "Hermes",
+  "description": "Your fire-breathing dragon voice assistant — listen, speak, command",
+  "start_url": "index.html",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#0d001a",
+  "theme_color": "#5a189a",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "scope": ".",
+  "lang": "en-US",
+  "dir": "ltr",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "categories": ["productivity", "utilities", "lifestyle"]
+}

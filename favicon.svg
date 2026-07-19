@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="8" fill="#0a0a0f"/>
+  <!-- KITT scanner bar -->
+  <rect x="8" y="28" width="48" height="3" rx="1.5" fill="#ff1a1a" opacity="0.3"/>
+  <rect x="8" y="28" width="16" height="3" rx="1.5" fill="#ff1a1a" opacity="0.9">
+    <animate attributeName="x" values="8;40;8" dur="2s" repeatCount="indefinite"/>
+  </rect>
+  <!-- H -->
+  <text x="32" y="52" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="22" fill="#ff1a1a" letter-spacing="2">H</text>
+</svg>
