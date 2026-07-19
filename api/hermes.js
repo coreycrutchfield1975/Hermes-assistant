@@ -80,8 +80,8 @@ export default async function handler(req, res) {
       return res.json({ response: "Searching instead.", action: 'open', url: 'https://google.com/search?q=' + encodeURIComponent(target) });
     }
     if (/^(search|search for|look up|find)\b/.test(c)) {
-      const q = c.replace(/^(search|search for|look up|find)\s+/, '').trim();
-      if (q) return res.json({ response: "Searching for " + q + "...", action: 'open', url: 'https://google.com/search?q=' + encodeURIComponent(q) });
+      const q = c.replace(/^(?:search\s+(?:for\s+)?|look\s+up\s+|find\s+)/, '').trim();
+      if (q) return res.json({ response: 'Searching for ' + q + '...', action: 'open', url: 'https://google.com/search?q=' + encodeURIComponent(q) });
     }
     if (/\bweather\b/.test(c)) {
       return res.json({ response: "Opening weather...", action: 'open', url: 'https://google.com/search?q=weather' });
