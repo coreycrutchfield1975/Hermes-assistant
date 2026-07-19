@@ -183,9 +183,10 @@ function speak(text){
   if(!window.speechSynthesis)return;
   window.speechSynthesis.cancel();
   var u=new SpeechSynthesisUtterance(text);
-  u.rate=1.0;u.pitch=0.85;u.lang='en-US';
+  u.rate=0.9;u.pitch=0.65;u.volume=1;
+  u.lang='en-US';
   var voices=window.speechSynthesis.getVoices();
-  var pref=voices.find(function(v){return v.lang.startsWith('en')&&(v.name.includes('Google UK')||v.name.includes('Female'))})||voices.find(function(v){return v.lang.startsWith('en')});
+  var pref=voices.find(function(v){return v.lang.startsWith('en')&&(v.name.includes('Google UK')||v.name.includes('Male')||v.name.includes('David'))})||voices.find(function(v){return v.name.includes('Microsoft')&&v.lang.startsWith('en')})||voices.find(function(v){return v.lang.startsWith('en')});
   if(pref)u.voice=pref;
   window.speechSynthesis.speak(u);
 }
@@ -226,83 +227,52 @@ function startRecognition(){
   if(!SR){setStatus('error','');return}
   if(recognition){try{recognition.abort()}catch(e){}}
   recognition=new SR();
-  recognition.continuous=true;
-  recognition.interimResults=true;
+  recognition.continuous=false;
+  recognition.interimResults=false;
   recognition.lang='en-US';
   recognition.maxAlternatives=3;
-
-  var silenceTimer=null;
+  setStatus('listening','');
+  micBtn.classList.add('active');
+  animateEq('processing');
 
   recognition.onresult=function(e){
-    var interim='',final='';
-    for(var i=e.resultIndex;i<e.results.length;i++){
-      var r=e.results[i];
-      if(r.isFinal)final+=r[0].transcript;
-      else interim+=r[0].transcript;
+    var text='';
+    for(var i=0;i<e.results.length;i++){
+      if(e.results[i].isFinal) text+=e.results[i][0].transcript;
     }
-    if(final)showTranscript(final);
-    else if(interim)showTranscript(interim);
-
-    if(final&&final.trim()){
-      var cmd=final.toLowerCase().trim();
-      
-      if(cmd.includes('hey hermes')||cmd.includes('hermes')){
-        wakeActive=true;
-        setStatus('wake','');
-        micBtn.classList.add('active');
-        animateEq('processing');
-        speak('Yes?');
-        var afterWake=cmd.replace(/^(hey\s+)?hermes[,]?\s*/,'').trim();
-        if(afterWake&&afterWake!='hermes'&&!afterWake.includes('hey hermes')){
-          wakeActive=false;
-          setTimeout(function(){callHermes(afterWake)},400);
-          return;
-        }
-        if(silenceTimer)clearTimeout(silenceTimer);
-        silenceTimer=setTimeout(function(){wakeActive=false;setStatus('listening','');micBtn.classList.remove('active');animateEq('idle')},8000);
-        return;
+    text=text.trim();
+    if(text){
+      showTranscript(text);
+      var cmd=text.toLowerCase().trim();
+      var afterWake=cmd.replace(/^(hey\s+)?hermes[,]?\s*/,'').trim();
+      if(afterWake&&afterWake!=cmd){
+        setTimeout(function(){callHermes(afterWake)},300);
+      } else {
+        setTimeout(function(){callHermes(text)},300);
       }
-
-      if(wakeActive){
-        wakeActive=false;
-        setTimeout(function(){callHermes(final.trim())},200);
-        if(silenceTimer)clearTimeout(silenceTimer);
-        return;
-      }
-
-      // Direct command (no wake word needed)
-      var dc=['hello','hey','hi','help','search','weather','open','time','date','thank','thanks','who are you','what can you','good morning','good evening','bye','joke','how are you'];
-      var isDirect=false;
-      for(var i=0;i<dc.length;i++){if(cmd.includes(dc[i])){isDirect=true;break}}
-      if(isDirect){
-        setTimeout(function(){callHermes(final.trim())},200);
-        if(silenceTimer)clearTimeout(silenceTimer);
-      }
+    } else {
+      showTranscript('Did not catch that. Try again.');
     }
+    stopRecognition();
   };
 
   recognition.onerror=function(e){
     if(e.error==='not-allowed'){setStatus('error','');return}
-    if(e.error!=='no-speech')scheduleRestart();
+    showTranscript('Try again.');
+    stopRecognition();
   };
-  recognition.onend=function(){scheduleRestart()};
 
-  try{
-    recognition.start();
-    isListening=true;
-    setStatus('listening','');
-    micBtn.classList.add('active');
-  }catch(e){scheduleRestart()}
+  recognition.onend=function(){stopRecognition()};
+
+  try{recognition.start();isListening=true}
+  catch(e){stopRecognition()}
 }
 
-function scheduleRestart(){
-  if(restartTimer)clearTimeout(restartTimer);
-  restartTimer=setTimeout(function(){if(!isListening)startRecognition()},1000);
-}
 function stopRecognition(){
-  if(restartTimer)clearTimeout(restartTimer);
   if(recognition){try{recognition.stop()}catch(e){}recognition=null}
-  isListening=false;micBtn.classList.remove('active');animateEq('idle');
+  isListening=false;micBtn.classList.remove('active');
+  animateEq('idle');
+  setTimeout(function(){setStatus('listening','')},1000);
 }
 
 // ── Event listeners ──
