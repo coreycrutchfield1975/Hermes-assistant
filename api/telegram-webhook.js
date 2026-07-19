@@ -2,7 +2,7 @@
 // When someone replies to the bot's message in DM, this catches it
 // KITT polls for the response via /api/hermes (action: 'poll')
 
-const BOT_TOKEN=proces...OKEN || '';
+const BOT_TOKEN=process.env.TELEGRAM_BOT_TOKEN || '';
 const CHAT_ID = '8973134274';
 
 export default async function handler(req, res) {
