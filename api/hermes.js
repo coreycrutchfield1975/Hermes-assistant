@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   try {
     const { command, action, message_id } = req.body || {};
 
-    // ── POLL: check for response to a previously sent command ──
+    // ── POLL: check for any NEW message after the one we sent ──
     if (action === 'poll' && message_id) {
       const pollRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates`, {
         method: 'POST',
@@ -29,19 +29,29 @@ export default async function handler(req, res) {
         const data = await pollRes.json();
         const updates = data.result || [];
 
+        // Find the newest message from Hermes (bot's own messages via telegram)
+        // that was sent AFTER our bridge message
+        let latestReply = null;
+        let latestDate = 0;
         for (const update of updates) {
           const msg = update.message;
           if (msg &&
               msg.chat.id.toString() === CHAT_ID &&
-              msg.reply_to_message &&
-              msg.reply_to_message.message_id === message_id &&
-              msg.text) {
-            return res.json({
-              response: msg.text,
-              action: 'speak',
-              received: true
-            });
+              msg.date > latestDate &&
+              msg.message_id > message_id &&
+              msg.text &&
+              !msg.text.startsWith('🎤')) {  // skip the KITT voice commands
+            latestReply = msg;
+            latestDate = msg.date;
           }
+        }
+
+        if (latestReply) {
+          return res.json({
+            response: latestReply.text,
+            action: 'speak',
+            received: true
+          });
         }
       }
 
