@@ -1,12 +1,12 @@
 {
-  "name": "Hermes Dragon Voice Assistant",
-  "short_name": "Hermes",
-  "description": "Your fire-breathing dragon voice assistant — listen, speak, command",
+  "name": "KITT — Voice Agent",
+  "short_name": "KITT",
+  "description": "KITT voice assistant — Knight Rider inspired, Hermes powered",
   "start_url": "index.html",
   "display": "fullscreen",
   "orientation": "portrait",
-  "background_color": "#0d001a",
-  "theme_color": "#5a189a",
+  "background_color": "#050508",
+  "theme_color": "#ff1a1a",
   "icons": [
     {
       "src": "icon.svg",
@@ -19,5 +19,5 @@
   "lang": "en-US",
   "dir": "ltr",
   "display_override": ["fullscreen", "standalone", "minimal-ui"],
-  "categories": ["productivity", "utilities", "lifestyle"]
+  "categories": ["productivity", "utilities"]
 }

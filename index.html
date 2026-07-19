@@ -152,7 +152,7 @@ function setStatus(state,msg){
   else animateEq(false);
 }
 
-function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 
 // ── Chat history ──
 var chatHistory=[];
@@ -166,7 +166,27 @@ function addChat(role,text){
   if(chatHistory.length>30)chatHistory.shift();
 }
 
-// ── TTS (KITT voice: low, slow, deliberate) ──
+// ── TTS with voice preload guard ──
+var voiceReady=false;
+function ensureVoice(){
+  if(voiceReady)return;
+  var v=window.speechSynthesis.getVoices();
+  if(v&&v.length>0){voiceReady=true;return}
+  window.speechSynthesis.onvoiceschanged=function(){
+    voiceReady=true;
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged=null;
+  };
+  // Retry in case onvoiceschanged already fired
+  setTimeout(function(){
+    if(!voiceReady){
+      var v2=window.speechSynthesis.getVoices();
+      if(v2&&v2.length>0)voiceReady=true;
+    }
+  },500);
+}
+ensureVoice();
+
 function speak(text){
   if(!window.speechSynthesis)return;
   window.speechSynthesis.cancel();
@@ -176,6 +196,8 @@ function speak(text){
   var voices=window.speechSynthesis.getVoices();
   var pref=voices.find(function(v){return v.lang.startsWith('en')&&(v.name.includes('Male')||v.name.includes('David')||v.name.includes('Mark'));})||voices.find(function(v){return v.name.includes('Microsoft')&&v.lang.startsWith('en')&&!v.name.includes('Zira');})||voices.find(function(v){return v.lang.startsWith('en')&&!v.name.includes('Female');})||voices.find(function(v){return v.lang.startsWith('en');});
   if(pref)u.voice=pref;
+  // Don't restart wake-word listening while TTS is speaking
+  u.onend=function(){scheduleWakeListening()};
   window.speechSynthesis.speak(u);
 }
 
@@ -186,34 +208,70 @@ function callHermes(cmd){
   fetch('/api/hermes',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({command:cmd})
+    body:JSON.stringify({command:cmd,history:chatHistory.slice(-10)})
   })
   .then(function(r){return r.json()})
   .then(function(d){
     var resp=d.response||'No response.';
+    // Bridge mode — command sent to Telegram, now poll for Hermes reply
+    if(d.action==='bridge'&&d.message_id){
+      addChat('kitt','One moment \u2014 tapping Hermes for that...');
+      setStatus('processing','Waiting for Hermes...');
+      pollHermes(d.message_id,0);
+      return;
+    }
     addChat('kitt',resp);
     speak(resp);
     if(d.action==='open'&&d.url){
       setTimeout(function(){window.open(d.url,'_blank')},600);
     }
-    if(d.visualization==='thinking')animateEq(true);
     setTimeout(function(){setStatus('listening','')},3000);
   })
   .catch(function(){
     addChat('kitt','Connection error.');
     setStatus('listening','');
+    scheduleWakeListening();
   });
 }
 
-// ── Speech recognition (one-shot, reliable) ──
+// ── Poll Hermes for response to a bridged command ──
+function pollHermes(messageId,attempt){
+  var maxAttempts=60;
+  if(attempt>=maxAttempts){
+    addChat('kitt','Hermes didn\'t respond in time. Try again?');
+    setStatus('listening','');
+    scheduleWakeListening();
+    return;
+  }
+  fetch('/api/hermes',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'poll',message_id:messageId})
+  })
+  .then(function(r){return r.json()})
+  .then(function(d){
+    if(d.received&&d.response){
+      addChat('kitt',d.response);
+      speak(d.response);
+      setTimeout(function(){setStatus('listening','')},3000);
+    } else {
+      setTimeout(function(){pollHermes(messageId,attempt+1)},500);
+    }
+  })
+  .catch(function(){
+    setTimeout(function(){pollHermes(messageId,attempt+1)},500);
+  });
+}
+
+// ── Speech recognition wake-word loop ──
 var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-var recognition=null,isListening=false,pushToTalk=false;
+var recognition=null,isListening=false,pushToTalk=false,speaking=false,processing=false;
 
 function startRecognition(){
   if(!SR){setStatus('error','');return}
   if(recognition){try{recognition.abort()}catch(e){}}
   recognition=new SR();
-  recognition.continuous=false;
+  recognition.continuous=true;
   recognition.interimResults=false;
   recognition.lang='en-US';
   recognition.maxAlternatives=3;
@@ -227,76 +285,147 @@ function startRecognition(){
       if(e.results[i].isFinal)text+=e.results[i][0].transcript;
     }
     text=text.trim();
-    if(text){
-      transcriptEl.innerHTML='<span>'+esc(text)+'</span>';
-      var cmd=text.toLowerCase().trim();
-      var afterWake=cmd.replace(/^(hey\s+)?(kitt|hermes|jarvis)[,!\s]*/i,'').trim();
-      if(afterWake&&afterWake!==cmd){
-        setTimeout(function(){callHermes(afterWake)},300);
-      } else {
-        setTimeout(function(){callHermes(text)},300);
-      }
-    } else {
-      transcriptEl.innerHTML='<span style="color:rgba(255,26,26,0.4)">Did not catch that.</span>';
-      setTimeout(function(){setStatus('listening','')},1500);
+    if(!text)return;
+    transcriptEl.innerHTML='<span>'+esc(text)+'</span>';
+    var cmd=text.toLowerCase().trim();
+
+    // Wake word detection (prefix or mid-sentence)
+    var wakeRe=/(?:^|\s)(?:hey\s+)?(?:kitt|hermes|jarvis)[,!\s]*/i;
+    var wakeMatch=cmd.match(wakeRe);
+    var afterWake=wakeMatch?cmd.replace(wakeRe,'').trim():'';
+
+    if(afterWake&&afterWake!==cmd){
+      // Wake word detected with a command after it
+      processing=true;
+      stopRecognition();
+      callHermes(afterWake);
+      return;
     }
-    stopRecognition();
+
+    if(wakeMatch&&!afterWake){
+      // Just the wake word — say "Yes?" and keep listening for the command
+      if(!speaking&&!processing){
+        speak('Yes?');
+      }
+      return;
+    }
+
+    // Direct commands (no wake word needed)
+    var dc=['hello','hey','hi','help','search','weather','open','time','date','thank','thanks','who are you','what can you','good morning','good evening','bye','joke','how are you'];
+    var isDirect=false;
+    for(var i=0;i<dc.length;i++){if(cmd.includes(dc[i])){isDirect=true;break}}
+    if(isDirect){
+      processing=true;
+      stopRecognition();
+      callHermes(text);
+      return;
+    }
   };
 
   recognition.onerror=function(e){
     if(e.error==='not-allowed'){setStatus('error','Microphone blocked');return}
-    stopRecognition();
-    setTimeout(function(){setStatus('listening','')},500);
+    // Restart on transient errors (no-speech, abort, etc.)
+    if(e.error==='no-speech'||e.error==='abort'){scheduleWakeListening()}
   };
 
-  recognition.onend=function(){stopRecognition()};
+  recognition.onend=function(){
+    // Auto-restart if not in push-to-talk or processing mode
+    if(!pushToTalk&&!processing)scheduleWakeListening();
+  };
 
   try{recognition.start();isListening=true}
-  catch(e){stopRecognition()}
+  catch(e){scheduleWakeListening()}
 }
 
 function stopRecognition(){
-  if(recognition){try{recognition.stop()}catch(e){}recognition=null}
+  if(recognition){
+    try{recognition.stop()}catch(e){}
+    recognition=null;
+  }
   isListening=false;
   micBtn.classList.remove('active','holding');
   animateEq(false);
 }
 
-// ── Push-to-talk: hold to speak, release to send ──
+function scheduleWakeListening(){
+  // Don't restart while speaking or processing
+  if(speaking||processing||pushToTalk)return;
+  if(isListening)return;
+  // Small delay to avoid rapid restart loops
+  setTimeout(function(){startRecognition()},300);
+}
+
+// ── Push-to-talk ──
 micBtn.addEventListener('touchstart',function(e){
   e.preventDefault();
-  if(isListening)return;
+  if(isListening)stopRecognition();
   pushToTalk=true;
   micBtn.classList.add('holding');
-  startRecognition();
+  // For PTT use one-shot mode
+  var pttSR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!pttSR)return;
+  var pttRec=new pttSR();
+  pttRec.continuous=false;
+  pttRec.interimResults=false;
+  pttRec.lang='en-US';
+  pttRec.maxAlternatives=3;
+  setStatus('listening','');
+  micBtn.classList.add('active');
+  animateEq(true);
+  pttRec.onresult=function(e){
+    var text='';
+    for(var i=0;i<e.results.length;i++){
+      if(e.results[i].isFinal)text+=e.results[i][0].transcript;
+    }
+    text=text.trim();
+    if(text){
+      transcriptEl.innerHTML='<span>'+esc(text)+'</span>';
+      var cmd=text.toLowerCase().trim();
+      var afterWake=cmd.replace(/^(?:hey\s+)?(?:kitt|hermes|jarvis)[,!\s]*/i,'').trim();
+      processing=true;
+      if(afterWake&&afterWake!==cmd){
+        callHermes(afterWake);
+      } else {
+        callHermes(text);
+      }
+    } else {
+      transcriptEl.innerHTML='<span style="color:rgba(255,26,26,0.4)">Did not catch that.</span>';
+    }
+    try{pttRec.stop()}catch(e){}
+    micBtn.classList.remove('active','holding');
+    animateEq(false);
+  };
+  pttRec.onerror=function(){
+    micBtn.classList.remove('active','holding');
+    animateEq(false);
+  };
+  pttRec.onend=function(){
+    micBtn.classList.remove('active','holding');
+    animateEq(false);
+    pushToTalk=false;
+  };
+  try{pttRec.start()}catch(e){pushToTalk=false;micBtn.classList.remove('holding')}
 });
 
 micBtn.addEventListener('touchend',function(e){
   e.preventDefault();
-  pushToTalk=false;
-  micBtn.classList.remove('holding');
-  // recognition stops automatically via onend
+  // Recognition will stop via onend
 });
 
 micBtn.addEventListener('touchcancel',function(e){
   pushToTalk=false;
   micBtn.classList.remove('holding');
-  stopRecognition();
 });
 
-// Fallback for mouse (desktop)
+// Mouse fallback for desktop
 micBtn.addEventListener('mousedown',function(){
-  if(isListening)return;
+  if(isListening)stopRecognition();
   pushToTalk=true;
-  micBtn.classList.add('holding');
   startRecognition();
 });
-micBtn.addEventListener('mouseup',function(){
-  pushToTalk=false;
-  micBtn.classList.remove('holding');
-});
+micBtn.addEventListener('mouseup',function(){pushToTalk=false});
 micBtn.addEventListener('mouseleave',function(){
-  if(pushToTalk){pushToTalk=false;micBtn.classList.remove('holding');stopRecognition()}
+  if(pushToTalk){pushToTalk=false;stopRecognition()}
 });
 
 // ── Ambient mode: triple-tap ──
@@ -322,5 +451,3 @@ if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').catch(
 
 })();
 </script>
-</body>
-</html>
