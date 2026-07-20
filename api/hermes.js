@@ -3,6 +3,7 @@
 // Quick commands handled locally, complex ones go to the Hermes bridge
 
 const HERMES_BRIDGE_URL = process.env.HERMES_BRIDGE_URL || '';
+const HERMES_BRIDGE_SECRET = process.env.HERMES_BRIDGE_SECRET || '';
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 export default async function handler(req, res) {
@@ -64,10 +65,28 @@ export default async function handler(req, res) {
     // ── Try Hermes bridge (local server via Cloudflare tunnel) ──
     if (HERMES_BRIDGE_URL) {
       try {
-        const bridgeRes = await fetch(HERMES_BRIDGE_URL + '/command', {
+        const body = JSON.stringify({ command: cmd, history: [] });
+
+        const headers = { 'Content-Type': 'application/json' };
+
+        // Add HMAC-SHA256 signature if secret is configured
+        if (HERMES_BRIDGE_SECRET) {
+          const enc = new TextEncoder();
+          const key = await crypto.subtle.importKey(
+            'raw', enc.encode(HERMES_BRIDGE_SECRET),
+            { name: 'HMAC', hash: 'SHA-256' },
+            false, ['sign']
+          );
+          const sig = await crypto.subtle.sign('HMAC', key, enc.encode(body));
+          const sigHex = Array.from(new Uint8Array(sig))
+            .map(b => b.toString(16).padStart(2, '0')).join('');
+          headers['X-Hub-Signature-256'] = 'sha256=' + sigHex;
+        }
+
+        const bridgeRes = await fetch(HERMES_BRIDGE_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ command: cmd, history: [] }),
+          headers,
+          body,
           signal: AbortSignal.timeout(60000) // 60s timeout
         });
 
