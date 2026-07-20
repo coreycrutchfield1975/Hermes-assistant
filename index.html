@@ -301,7 +301,7 @@ function callHermes(cmd){
   addChat('user',cmd);
   playWake();
   
-  fetch('/api',{
+  fetch(window.location.origin+'/api',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({command:cmd,history:chatHistory.slice(-10)})
