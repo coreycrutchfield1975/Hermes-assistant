@@ -1,6 +1,7 @@
-// Hermes Bridge v5 — KITT talks to local Hermes server directly
-// No Telegram middleman, no polling — instant Jarvis-style response
-// Quick commands handled locally, complex ones go to the Hermes bridge
+// Hermes Bridge v6 — KITT talks to Hermes via Cloudflare tunnel → webhook
+// Webhook delivers Hermes response to Telegram DM
+// Quick commands handled locally, Groq fallback for simple chat
+// Complex commands sent to Hermes via bridge
 
 const HERMES_BRIDGE_URL = process.env.HERMES_BRIDGE_URL || '';
 const HERMES_BRIDGE_SECRET = process.env.HERMES_BRIDGE_SECRET || '';
@@ -65,7 +66,7 @@ export default async function handler(req, res) {
     // ── Try Hermes bridge (local server via Cloudflare tunnel) ──
     if (HERMES_BRIDGE_URL) {
       try {
-        const body = JSON.stringify({ command: cmd, history: [] });
+        const body = JSON.stringify({ command: cmd });
 
         const headers = { 'Content-Type': 'application/json' };
 
@@ -92,10 +93,13 @@ export default async function handler(req, res) {
 
         if (bridgeRes.ok) {
           const data = await bridgeRes.json();
-          if (data.response) {
-            // Clean up Hermes response — remove session_id footer
-            const clean = data.response.replace(/\r?\nsession_id:.*/, '').trim();
-            return res.json({ response: clean, action: 'speak' });
+          // Webhook returns {status:"accepted"} — response goes to Telegram DM
+          if (data.status === 'accepted') {
+            return res.json({
+              response: "Sent to Hermes. Check Telegram for the response.",
+              action: 'speak',
+              bridged: true
+            });
           }
         }
       } catch (e) {
