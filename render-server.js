@@ -74,7 +74,7 @@ app.post('/api', express.json(), async (req, res) => {
   
   if (isComplex) {
     const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-    const CHAT_ID = process.env.TELEGRAM_BOT_TOKEN || '8973134274';
+    const CHAT_ID = process.env.TELEGRAM_CHAT_ID || '8973134274';
     if (BOT_TOKEN) {
       try {
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
