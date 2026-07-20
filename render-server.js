@@ -13,7 +13,7 @@ app.post('/api', express.json(), async (req, res) => {
   const cmd = command.toLowerCase().trim();
   
   // Quick commands
-  if (cmd.includes('time') && !cmd.includes('what')) {
+  if (cmd.includes('time') && !cmd.includes('what') || cmd.includes('what time')) {
     return res.json({ response: new Date().toLocaleTimeString(), action: 'speak' });
   }
   if (cmd.includes('date')) {
