@@ -68,6 +68,30 @@ app.post('/api', express.json(), async (req, res) => {
     console.error('Groq error:', e.message);
   }
   
+  // Bridge to Hermes on Telegram for complex tasks
+  const complexKeywords = ['deploy', 'edit', 'build', 'create', 'update', 'change', 'fix', 'add', 'remove', 'make', 'schedule', 'remind', 'email', 'message', 'send'];
+  const isComplex = complexKeywords.some(k => cmd.includes(k));
+  
+  if (isComplex) {
+    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+    const CHAT_ID = process.env.TELEGRAM_BOT_TOKEN || '8973134274';
+    if (BOT_TOKEN) {
+      try {
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: CHAT_ID,
+            text: `🎤 KITT needs you: ${command}`
+          })
+        });
+        console.log('Forwarded to Hermes');
+      } catch (e) {
+        console.error('Telegram forward failed:', e.message);
+      }
+    }
+  }
+  
   return res.json({ response: 'I heard you. Try asking me something else.', action: 'speak' });
 });
 
