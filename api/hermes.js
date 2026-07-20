@@ -1,7 +1,7 @@
-// Hermes Bridge v6 — KITT talks to Hermes via Cloudflare tunnel → webhook
-// Webhook delivers Hermes response to Telegram DM
-// Quick commands handled locally, Groq fallback for simple chat
-// Complex commands sent to Hermes via bridge
+// Hermes Bridge v7 — KITT handles everything itself
+// Quick commands local, Groq AI for conversation
+// Bridge to Hermes only for explicit real-task commands
+// Add HERMES_BRIDGE_URL env and set to something starting with http to enable bridge
 
 const HERMES_BRIDGE_URL = process.env.HERMES_BRIDGE_URL || '';
 const HERMES_BRIDGE_SECRET = process.env.HERMES_BRIDGE_SECRET || '';
@@ -63,8 +63,32 @@ export default async function handler(req, res) {
       return res.json({ response: "Opening weather...", action: 'open', url: 'https://google.com/search?q=weather' });
     }
 
-    // ── Try Hermes bridge (local server via Cloudflare tunnel) ──
-    if (HERMES_BRIDGE_URL) {
+    // ── Groq AI conversation (primary handler) ──
+    if (GROQ_API_KEY) {
+      try {
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + GROQ_API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              { role: 'system', content: 'You are KITT from Knight Rider. You are concise and clever. Answer naturally. You can handle most questions yourself.' },
+              { role: 'user', content: cmd }
+            ],
+            max_tokens: 200,
+            temperature: 0.7
+          })
+        });
+        if (groqRes.ok) {
+          const data = await groqRes.json();
+          return res.json({ response: data.choices[0].message.content.trim(), action: 'speak' });
+        }
+      } catch (e) {}
+    }
+
+    // ── Bridge to Hermes (only if command explicitly mentions Hermes/Telegram/bridge) ──
+    const needsHermes = /\b(?:hermes|bridge|telegram|email|report|patient|task|schedule)\b/.test(c);
+    if (needsHermes && HERMES_BRIDGE_URL) {
       try {
         const body = JSON.stringify({ command: cmd });
 
@@ -105,29 +129,6 @@ export default async function handler(req, res) {
       } catch (e) {
         console.error('Bridge call failed:', e.message);
       }
-    }
-
-    // ── Fallback: Groq AI conversation ──
-    if (GROQ_API_KEY) {
-      try {
-        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + GROQ_API_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [
-              { role: 'system', content: 'You are KITT from Knight Rider. You are concise and clever. Answer naturally.' },
-              { role: 'user', content: cmd }
-            ],
-            max_tokens: 200,
-            temperature: 0.7
-          })
-        });
-        if (groqRes.ok) {
-          const data = await groqRes.json();
-          return res.json({ response: data.choices[0].message.content.trim(), action: 'speak' });
-        }
-      } catch (e) {}
     }
 
     return res.json({ response: 'System offline. Try again when connected.', action: 'speak' });
