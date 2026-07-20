@@ -14,7 +14,9 @@ app.post('/api', express.json(), async (req, res) => {
   
   // Quick commands
   if (cmd.includes('time') && !cmd.includes('what') || cmd.includes('what time')) {
-    return res.json({ response: new Date().toLocaleTimeString(), action: 'speak' });
+    const now = new Date();
+    const options = { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', hour12: true };
+    return res.json({ response: now.toLocaleTimeString('en-US', options), action: 'speak' });
   }
   if (cmd.includes('date')) {
     return res.json({ response: new Date().toLocaleDateString(), action: 'speak' });
