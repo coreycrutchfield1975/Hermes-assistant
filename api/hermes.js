@@ -1,140 +1,73 @@
-// Hermes Bridge v7 — KITT handles everything itself
-// Quick commands local, Groq AI for conversation
-// Bridge to Hermes only for explicit real-task commands
-// Add HERMES_BRIDGE_URL env and set to something starting with http to enable bridge
-
-const HERMES_BRIDGE_URL = process.env.HERMES_BRIDGE_URL || '';
-const HERMES_BRIDGE_SECRET = process.env.HERMES_BRIDGE_SECRET || '';
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
+// Hermes Bridge v7
+const GROQ_API_KEY=process.env.GROQ_API_KEY;
+const BRIDGE_URL = process.env.HERMES_BRIDGE_URL || '';
+const BRIDGE_SECRET=process.env.HERMES_BRIDGE_SECRET || '';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Content-Type', 'application/json');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-
-  try {
-    const { command, action, message_id } = req.body || {};
-
-    // ── POLL: deprecated (no longer needed without Telegram bridge) ──
-    if (action === 'poll') {
-      return res.json({ response: null, action: 'wait', received: false });
-    }
-
-    // ── SEND: handle a new command ──
-    const cmd = (command || '').trim();
-    if (!cmd) return res.json({ response: "I'm listening. What do you need?", action: 'speak' });
-
-    const c = cmd.toLowerCase();
-
-    // Quick commands (handled instantly for speed)
-    if (/\b(?:time|what time)\b/.test(c) && !/what can you/.test(c)) {
-      return res.json({ response: "It's " + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ".", action: 'speak' });
-    }
-    if (/\b(?:date|today's date|what day)\b/.test(c)) {
-      return res.json({ response: "Today is " + new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) + ".", action: 'speak' });
-    }
-    if (/^(open|go to|launch|start)\b/.test(c)) {
-      const target = c.replace(/^(open|go to|launch|start)\s+/, '').trim();
-      const apps = {
-        'charge rn': 'https://chargenurse-app.vercel.app/charge-rn.html',
-        'morning report': 'https://chargenurse-app.vercel.app/morning-report.html',
-        'scheduler': 'https://clcscheduler.vercel.app/',
-        'landing page': 'https://chargenurse-app.vercel.app/',
-        'resource directory': 'https://jjp-resource-directory.vercel.app/',
-        'bullion dealer': 'https://bulliondealerpro.com/',
-        'google': 'https://google.com',
-        'gmail': 'https://mail.google.com',
-        'youtube': 'https://youtube.com',
-      };
-      for (const key in apps) {
-        if (target.includes(key)) return res.json({ response: "Opening " + key + "!", action: 'open', url: apps[key] });
-      }
-      return res.json({ response: "Searching instead.", action: 'open', url: 'https://google.com/search?q=' + encodeURIComponent(target) });
-    }
-    if (/^(search|search for|look up|find)\b/.test(c)) {
-      const q = c.replace(/^(?:search\s+(?:for\s+)?|look\s+up\s+|find\s+)/, '').trim();
-      if (q) return res.json({ response: 'Searching for ' + q + '...', action: 'open', url: 'https://google.com/search?q=' + encodeURIComponent(q) });
-    }
-    if (/\bweather\b/.test(c)) {
-      return res.json({ response: "Opening weather...", action: 'open', url: 'https://google.com/search?q=weather' });
-    }
-
-    // ── Groq AI conversation (primary handler) ──
-    if (GROQ_API_KEY) {
-      try {
-        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + GROQ_API_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [
-              { role: 'system', content: 'You are KITT from Knight Rider. You are concise and clever. Answer naturally. You can handle most questions yourself.' },
-              { role: 'user', content: cmd }
-            ],
-            max_tokens: 200,
-            temperature: 0.7
-          })
-        });
-        if (groqRes.ok) {
-          const data = await groqRes.json();
-          return res.json({ response: data.choices[0].message.content.trim(), action: 'speak' });
-        }
-      } catch (e) {}
-    }
-
-    // ── Bridge to Hermes (only if command explicitly mentions Hermes/Telegram/bridge) ──
-    const needsHermes = /\b(?:hermes|bridge|telegram|email|report|patient|task|schedule)\b/.test(c);
-    if (needsHermes && HERMES_BRIDGE_URL) {
-      try {
-        const body = JSON.stringify({ command: cmd });
-
-        const headers = { 'Content-Type': 'application/json' };
-
-        // Add HMAC-SHA256 signature if secret is configured
-        if (HERMES_BRIDGE_SECRET) {
-          const enc = new TextEncoder();
-          const key = await crypto.subtle.importKey(
-            'raw', enc.encode(HERMES_BRIDGE_SECRET),
-            { name: 'HMAC', hash: 'SHA-256' },
-            false, ['sign']
-          );
-          const sig = await crypto.subtle.sign('HMAC', key, enc.encode(body));
-          const sigHex = Array.from(new Uint8Array(sig))
-            .map(b => b.toString(16).padStart(2, '0')).join('');
-          headers['X-Hub-Signature-256'] = 'sha256=' + sigHex;
-        }
-
-        const bridgeRes = await fetch(HERMES_BRIDGE_URL, {
-          method: 'POST',
-          headers,
-          body,
-          signal: AbortSignal.timeout(60000) // 60s timeout
-        });
-
-        if (bridgeRes.ok) {
-          const data = await bridgeRes.json();
-          // Webhook returns {status:"accepted"} — response goes to Telegram DM
-          if (data.status === 'accepted') {
-            return res.json({
-              response: "Sent to Hermes. Check Telegram for the response.",
-              action: 'speak',
-              bridged: true
-            });
-          }
-        }
-      } catch (e) {
-        console.error('Bridge call failed:', e.message);
-      }
-    }
-
-    return res.json({ response: 'System offline. Try again when connected.', action: 'speak' });
-
-  } catch (err) {
-    console.error('Bridge error:', err);
-    return res.status(500).json({ response: 'System error.', action: 'speak' });
+  
+  const { command } = req.body || {};
+  if (!command) return res.status(400).json({ response: 'Say something...', action: 'speak' });
+  
+  const cmd = command.toLowerCase().trim();
+  
+  // Quick commands (handled locally)
+  if (cmd.includes('time') && !cmd.includes('what')) {
+    return res.json({ response: new Date().toLocaleTimeString(), action: 'speak' });
   }
+  if (cmd.includes('date')) {
+    return res.json({ response: new Date().toLocaleDateString(), action: 'speak' });
+  }
+  if (cmd.includes('open charge rn') || cmd.includes('charge rn')) {
+    return res.json({ response: 'Opening Charge RN', action: 'open', url: 'https://chargenurse-app.vercel.app/charge-rn.html' });
+  }
+  if (cmd.includes('open morning report') || cmd.includes('morning')) {
+    return res.json({ response: 'Opening Morning Report', action: 'open', url: 'https://chargenurse-app.vercel.app/morning-report.html' });
+  }
+  if (cmd.includes('open clc') || cmd.includes('clc scheduler')) {
+    return res.json({ response: 'Opening CLC Scheduler', action: 'open', url: 'https://clcscheduler.vercel.app' });
+  }
+  if (cmd.includes('open launchpad')) {
+    return res.json({ response: 'Opening Launchpad', action: 'open', url: 'https://clc-workstation.vercel.app' });
+  }
+  if (cmd.includes('search') || cmd.includes('find')) {
+    const q = cmd.replace(/search|find|for|about/g, '').trim();
+    return res.json({ response: 'Searching...', action: 'open', url: 'https://duckduckgo.com/?q=' + encodeURIComponent(q) });
+  }
+  if (cmd.includes('weather')) {
+    const location = cmd.replace(/weather|in|at/g, '').trim() || 'Missouri';
+    return res.json({ response: 'Checking weather for ' + location, action: 'open', url: 'https://duckduckgo.com/?q=weather+' + encodeURIComponent(location) });
+  }
+  if (cmd.includes('joke')) {
+    return res.json({ response: 'Why did the scarecrow win an award? Because he was outstanding in his field!', action: 'speak' });
+  }
+  
+  // Try Groq AI for conversation
+  try {
+    const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_API_KEY },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: 'You are KITT, a cool voice assistant with Knight Rider personality. Be concise and helpful. For quick tasks answer directly. For complex real-world tasks, say "I will ask Hermes about that" to route to the main AI.' },
+          { role: 'user', content: cmd }
+        ],
+        max_tokens: 200,
+        temperature: 0.7
+      })
+    });
+    const groq = await groqResp.json();
+    if (groq.choices && groq.choices[0]) {
+      const reply = groq.choices[0].message.content;
+      return res.json({ response: reply, action: 'speak' });
+    }
+  } catch (e) {
+    console.error('Groq error:', e.message);
+  }
+  
+  // Fallback
+  return res.json({ response: 'I heard you. Try asking me something else.', action: 'speak' });
 }
