@@ -33,6 +33,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 #eq.active{opacity:1}
 .eq-bar{width:clamp(8px,2vw,14px);background:linear-gradient(180deg,var(--r),var(--r2));border-radius:3px 3px 0 0;min-height:4px;transition:height 0.08s ease;box-shadow:0 0 8px rgba(255,26,26,0.3)}
 
+/* Mic level meter */
+#mic-level{position:fixed;bottom:clamp(100px,16vh,140px);left:50%;transform:translateX(-50%);z-index:6;width:clamp(120px,40vw,200px);height:4px;background:rgba(255,26,26,0.08);border-radius:2px;opacity:0;transition:opacity 0.3s;overflow:hidden}
+#mic-level.active{opacity:1}
+#mic-level .fill{height:100%;width:0%;background:linear-gradient(90deg,var(--r2),var(--r),#ff6666);border-radius:2px;transition:width 0.05s linear}
+
 /* Status */
 #status{position:fixed;top:clamp(14px,2.5vh,22px);left:50%;transform:translateX(-50%);z-index:5;pointer-events:none;font-size:clamp(1rem,3vw,1.3rem);letter-spacing:6px;color:rgba(255,26,26,0.3);text-transform:uppercase;font-weight:600;transition:all 0.4s;white-space:nowrap;background:rgba(5,5,8,0.6);padding:6px 18px;border-radius:12px;border:1px solid rgba(255,26,26,0.06);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 #status.listening{color:var(--r);text-shadow:0 0 20px rgba(255,26,26,0.3);border-color:rgba(255,26,26,0.15)}
@@ -56,7 +61,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 
 /* Transcript */
-#transcript{position:absolute;bottom:clamp(85px,12vh,105px);left:50%;transform:translateX(-50%);z-index:5;font-size:clamp(1rem,3vw,1.3rem);color:rgba(255,255,255,0.5);text-align:center;font-weight:300;letter-spacing:0.3px;pointer-events:none;line-height:1.5;width:80%;max-width:400px}
+#transcript{position:absolute;bottom:clamp(85px,12vh,105px);left:50%;transform:translateX(-50%);z-index:5;font-size:clamp(0.9rem,2.5vw,1.1rem);color:rgba(255,255,255,0.5);text-align:center;font-weight:300;letter-spacing:0.3px;pointer-events:none;line-height:1.5;width:80%;max-width:400px}
 
 /* Mic button */
 #mic{position:absolute;bottom:clamp(18px,3vh,30px);left:50%;transform:translateX(-50%);z-index:10;width:clamp(54px,9vw,68px);height:clamp(54px,9vw,68px);border-radius:50%;border:2px solid rgba(255,26,26,0.2);background:rgba(255,26,26,0.05);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;color:rgba(255,26,26,0.4);font-size:clamp(22px,4vw,28px);-webkit-touch-callout:none;-webkit-user-select:none}
@@ -64,6 +69,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 #mic.active{animation:micPulse 1.8s ease-in-out infinite;border-color:var(--r);background:rgba(255,26,26,0.1);color:var(--r)}
 #mic.holding{transform:translateX(-50%) scale(0.92);border-color:var(--r);background:rgba(255,26,26,0.12);color:var(--r)}
 @keyframes micPulse{0%,100%{box-shadow:0 0 15px rgba(255,26,26,0.1);transform:translateX(-50%) scale(1)}50%{box-shadow:0 0 35px rgba(255,26,26,0.25);transform:translateX(-50%) scale(1.06)}}
+
+/* Text input bar (slides up when keyboard icon tapped) */
+#text-bar{position:fixed;bottom:0;left:0;right:0;z-index:20;background:rgba(5,5,8,0.95);border-top:1px solid rgba(255,26,26,0.1);padding:clamp(8px,1.5vh,14px);display:none;gap:8px;align-items:center;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+#text-bar.open{display:flex}
+#text-input{flex:1;background:rgba(255,26,26,0.05);border:1px solid rgba(255,26,26,0.15);border-radius:10px;padding:clamp(10px,1.5vh,14px);color:#e8edf5;font-size:clamp(0.9rem,2.5vw,1.1rem);font-family:'Inter',sans-serif;outline:none}
+#text-input:focus{border-color:var(--r)}
+#text-send{background:var(--r);border:none;border-radius:10px;padding:clamp(10px,1.5vh,14px) clamp(16px,3vw,24px);color:#fff;font-size:clamp(0.9rem,2.5vw,1.1rem);font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:opacity 0.2s}
+#text-send:active{opacity:0.7}
+#text-toggle{position:absolute;bottom:clamp(70px,11vh,90px);right:clamp(12px,3vw,20px);z-index:11;background:rgba(255,26,26,0.05);border:1px solid rgba(255,26,26,0.12);border-radius:8px;padding:6px 10px;color:rgba(255,26,26,0.4);font-size:clamp(14px,2.5vw,18px);cursor:pointer;transition:all 0.2s;font-family:'Inter',sans-serif}
+#text-toggle:active{background:rgba(255,26,26,0.1);color:var(--r)}
 
 /* Footer */
 #ft{position:absolute;bottom:clamp(4px,0.6vh,8px);left:0;right:0;text-align:center;z-index:10;font-size:clamp(0.5rem,1.2vw,0.6rem);color:rgba(255,26,26,0.08);letter-spacing:4px;text-transform:uppercase;pointer-events:none}
@@ -79,6 +94,14 @@ body.ambient #chat{opacity:0.1;transition:opacity 2s}
 body.ambient #eq{opacity:0.05;transition:opacity 2s}
 body.listening-active #scan .led{animation-duration:1.2s;box-shadow:0 0 35px rgba(255,26,26,1),0 0 80px rgba(255,26,26,0.5),0 0 150px rgba(255,26,26,0.2)}
 body.listening-active #eq{opacity:1!important}
+
+/* Typing dots */
+#typing{display:none;position:fixed;top:clamp(45px,7vh,60px);left:50%;transform:translateX(-50%);z-index:6;gap:4px;align-items:center;pointer-events:none}
+#typing.active{display:flex}
+.typing-dot{width:5px;height:5px;border-radius:50%;background:var(--r);animation:typingPulse 1.2s ease-in-out infinite}
+.typing-dot:nth-child(2){animation-delay:0.2s}
+.typing-dot:nth-child(3){animation-delay:0.4s}
+@keyframes typingPulse{0%,100%{opacity:0.2;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
 </style>
 </head>
 <body>
@@ -89,15 +112,22 @@ body.listening-active #eq{opacity:1!important}
 
 <div id="hero">
   <div class="big">KITT</div>
-  <div class="sub">Voice  •  Agent  •  Fire</div>
+  <div class="sub">Voice • Agent • Fire</div>
 </div>
 
+<div id="typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
 <div id="status">■ STANDBY</div>
 <div id="scan"><div class="track"></div><div class="led"></div><div class="led2"></div></div>
 <div id="eq"></div>
+<div id="mic-level"><div class="fill" id="micLevelFill"></div></div>
 <div id="chat"></div>
 <div id="transcript"><span>Say "Hey KITT" or hold the mic</span></div>
 <button id="mic" aria-label="Microphone">🎤</button>
+<button id="text-toggle">⌨</button>
+<div id="text-bar">
+  <input id="text-input" type="text" placeholder="Type a command..." autocomplete="off">
+  <button id="text-send">Send</button>
+</div>
 <div id="ft"><a href="tg://resolve?domain=Coreysflybot" target="_blank" rel="noopener">⟐ KNIGHT INDUSTRIES</a></div>
 
 <script>
@@ -110,6 +140,13 @@ var micBtn=document.getElementById('mic');
 var transcriptEl=document.getElementById('transcript');
 var chatEl=document.getElementById('chat');
 var eqEl=document.getElementById('eq');
+var micLevelEl=document.getElementById('mic-level');
+var micLevelFill=document.getElementById('micLevelFill');
+var typingEl=document.getElementById('typing');
+var textToggle=document.getElementById('text-toggle');
+var textBar=document.getElementById('text-bar');
+var textInput=document.getElementById('text-input');
+var textSend=document.getElementById('text-send');
 
 // ── Equalizer ──
 var EQ_COUNT=21,eqBars=[],eqPhase=0;
@@ -148,14 +185,56 @@ function setStatus(state,msg){
   document.body.classList.toggle('listening-active',state==='wake'||state==='processing');
   if(statusTimeout)clearTimeout(statusTimeout);
   if(msg)transcriptEl.innerHTML='<span>'+esc(msg)+'</span>';
-  if(state==='processing'||state==='wake')animateEq(true);
-  else animateEq(false);
+  if(state==='processing'||state==='wake'){animateEq(true);typingEl.classList.add('active')}
+  else {animateEq(false);typingEl.classList.remove('active')}
 }
 
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 
-// ── Chat history ──
+// ── Sound effects ──
+function playBeep(freq,duration,type){
+  try{
+    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    var osc=ctx.createOscillator();
+    var gain=ctx.createGain();
+    osc.type=type||'sine';
+    osc.frequency.value=freq;
+    gain.gain.setValueAtTime(0.15,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+duration);
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.start();osc.stop(ctx.currentTime+duration);
+  }catch(e){}
+}
+function playWake(){playBeep(880,0.12,'sine');setTimeout(function(){playBeep(1320,0.15,'sine')},120)}
+function playDone(){playBeep(660,0.08,'sine')}
+function playError(){playBeep(220,0.25,'sawtooth')}
+
+// ── Chat history with localStorage persistence ──
 var chatHistory=[];
+
+function loadHistory(){
+  try{
+    var saved=localStorage.getItem('kitt_history');
+    if(saved){
+      chatHistory=JSON.parse(saved);
+      for(var i=0;i<chatHistory.length;i++){
+        var h=chatHistory[i];
+        var div=document.createElement('div');
+        div.className='msg '+(h.role==='user'?'you':'kitt');
+        div.innerHTML='<span class="lbl">'+(h.role==='user'?'YOU':'KITT')+'</span>'+esc(h.text);
+        chatEl.appendChild(div);
+      }
+      chatEl.scrollTop=chatEl.scrollHeight;
+    }
+  }catch(e){}
+}
+
+function saveHistory(){
+  try{
+    localStorage.setItem('kitt_history',JSON.stringify(chatHistory.slice(-50)));
+  }catch(e){}
+}
+
 function addChat(role,text){
   var div=document.createElement('div');
   div.className='msg '+(role==='user'?'you':'kitt');
@@ -163,10 +242,11 @@ function addChat(role,text){
   chatEl.appendChild(div);
   chatEl.scrollTop=chatEl.scrollHeight;
   chatHistory.push({role:role,text:text});
-  if(chatHistory.length>30)chatHistory.shift();
+  if(chatHistory.length>50)chatHistory.shift();
+  saveHistory();
 }
 
-// ── TTS with voice preload guard ──
+// ── TTS ──
 var voiceReady=false;
 function ensureVoice(){
   if(voiceReady)return;
@@ -177,7 +257,6 @@ function ensureVoice(){
     window.speechSynthesis.getVoices();
     window.speechSynthesis.onvoiceschanged=null;
   };
-  // Retry in case onvoiceschanged already fired
   setTimeout(function(){
     if(!voiceReady){
       var v2=window.speechSynthesis.getVoices();
@@ -196,15 +275,32 @@ function speak(text){
   var voices=window.speechSynthesis.getVoices();
   var pref=voices.find(function(v){return v.lang.startsWith('en')&&(v.name.includes('Male')||v.name.includes('David')||v.name.includes('Mark'));})||voices.find(function(v){return v.name.includes('Microsoft')&&v.lang.startsWith('en')&&!v.name.includes('Zira');})||voices.find(function(v){return v.lang.startsWith('en')&&!v.name.includes('Female');})||voices.find(function(v){return v.lang.startsWith('en');});
   if(pref)u.voice=pref;
-  // Don't restart wake-word listening while TTS is speaking
   u.onend=function(){scheduleWakeListening()};
   window.speechSynthesis.speak(u);
+}
+
+// ── Mic level meter ──
+var micAnalyser=null,micData=null;
+function startMicLevel(){
+  micLevelEl.classList.add('active');
+  micLevelFill.style.width='0%';
+}
+function stopMicLevel(){
+  micLevelEl.classList.remove('active');
+  micLevelFill.style.width='0%';
+}
+function updateMicLevel(level){
+  var pct=Math.min(100,Math.round(level*120));
+  micLevelFill.style.width=pct+'%';
 }
 
 // ── API call ──
 function callHermes(cmd){
   setStatus('processing','');
+  typingEl.classList.add('active');
   addChat('user',cmd);
+  playWake();
+  
   fetch('/api/hermes',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -213,57 +309,25 @@ function callHermes(cmd){
   .then(function(r){return r.json()})
   .then(function(d){
     var resp=d.response||'No response.';
-    // Bridge mode — command sent to Telegram, now poll for Hermes reply
-    if(d.action==='bridge'&&d.message_id){
-      addChat('kitt','One moment \u2014 tapping Hermes for that...');
-      setStatus('processing','Waiting for Hermes...');
-      pollHermes(d.message_id,0);
-      return;
-    }
+    typingEl.classList.remove('active');
     addChat('kitt',resp);
     speak(resp);
+    playDone();
     if(d.action==='open'&&d.url){
       setTimeout(function(){window.open(d.url,'_blank')},600);
     }
     setTimeout(function(){setStatus('listening','')},3000);
   })
   .catch(function(){
+    typingEl.classList.remove('active');
     addChat('kitt','Connection error.');
+    playError();
     setStatus('listening','');
     scheduleWakeListening();
   });
 }
 
-// ── Poll Hermes for response to a bridged command ──
-function pollHermes(messageId,attempt){
-  var maxAttempts=60;
-  if(attempt>=maxAttempts){
-    addChat('kitt','Hermes didn\'t respond in time. Try again?');
-    setStatus('listening','');
-    scheduleWakeListening();
-    return;
-  }
-  fetch('/api/hermes',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'poll',message_id:messageId})
-  })
-  .then(function(r){return r.json()})
-  .then(function(d){
-    if(d.received&&d.response){
-      addChat('kitt',d.response);
-      speak(d.response);
-      setTimeout(function(){setStatus('listening','')},3000);
-    } else {
-      setTimeout(function(){pollHermes(messageId,attempt+1)},500);
-    }
-  })
-  .catch(function(){
-    setTimeout(function(){pollHermes(messageId,attempt+1)},500);
-  });
-}
-
-// ── Speech recognition wake-word loop ──
+// ── Speech recognition ──
 var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 var recognition=null,isListening=false,pushToTalk=false,speaking=false,processing=false;
 
@@ -272,64 +336,79 @@ function startRecognition(){
   if(recognition){try{recognition.abort()}catch(e){}}
   recognition=new SR();
   recognition.continuous=true;
-  recognition.interimResults=false;
+  recognition.interimResults=true;
   recognition.lang='en-US';
   recognition.maxAlternatives=3;
   setStatus('listening','');
   micBtn.classList.add('active');
   animateEq(true);
+  startMicLevel();
+
+  var finalTranscript='';
 
   recognition.onresult=function(e){
-    var text='';
+    var interim='';
     for(var i=0;i<e.results.length;i++){
-      if(e.results[i].isFinal)text+=e.results[i][0].transcript;
+      var r=e.results[i];
+      if(r.isFinal)finalTranscript+=r[0].transcript+' ';
+      else interim+=r[0].transcript;
     }
-    text=text.trim();
-    if(!text)return;
-    transcriptEl.innerHTML='<span>'+esc(text)+'</span>';
-    var cmd=text.toLowerCase().trim();
+    var display=(finalTranscript+interim).trim();
+    if(display)transcriptEl.innerHTML='<span>'+esc(display)+'</span><span class="listening-blip"></span>';
+    else transcriptEl.innerHTML='<span style="color:var(--muted)">Listening...</span><span class="listening-blip"></span>';
 
-    // Wake word detection (prefix or mid-sentence)
-    var wakeRe=/(?:^|\s)(?:hey\s+)?(?:kitt|hermes|jarvis)[,!\s]*/i;
-    var wakeMatch=cmd.match(wakeRe);
-    var afterWake=wakeMatch?cmd.replace(wakeRe,'').trim():'';
+    // Update mic level from speech volume
+    var last=r||e.results[e.results.length-1];
+    if(last)updateMicLevel(last[0].confidence||0.5);
 
-    if(afterWake&&afterWake!==cmd){
-      // Wake word detected with a command after it
-      processing=true;
-      stopRecognition();
-      callHermes(afterWake);
-      return;
-    }
+    // Process when speech ends (interim becomes final)
+    if(e.results[e.results.length-1].isFinal){
+      var full=finalTranscript.trim();
+      if(full){
+        var cmd=full.toLowerCase().trim();
+        // Wake word detection
+        var wakeRe=/(?:^|\s)(?:hey\s+)?(?:kitt|hermes|jarvis)[,!?\s]*/i;
+        var wakeMatch=cmd.match(wakeRe);
+        var afterWake=wakeMatch?cmd.replace(wakeRe,'').trim():'';
 
-    if(wakeMatch&&!afterWake){
-      // Just the wake word — say "Yes?" and keep listening for the command
-      if(!speaking&&!processing){
-        speak('Yes?');
+        if(afterWake&&afterWake!==cmd){
+          // Wake word + command
+          processing=true;
+          stopRecognition();
+          callHermes(afterWake);
+          return;
+        }
+
+        if(wakeMatch&&!afterWake){
+          // Just wake word
+          if(!speaking&&!processing){
+            playWake();
+            speak('Yes?');
+          }
+          return;
+        }
+
+        // Direct commands
+        var dc=['hello','hey','hi','help','search','weather','open','time','date','thank','thanks','who are you','what can you','good morning','good evening','bye','how are you'];
+        var isDirect=false;
+        for(var i=0;i<dc.length;i++){if(cmd.includes(dc[i])){isDirect=true;break}}
+        if(isDirect){
+          processing=true;
+          stopRecognition();
+          callHermes(text);
+          return;
+        }
       }
-      return;
-    }
-
-    // Direct commands (no wake word needed)
-    var dc=['hello','hey','hi','help','search','weather','open','time','date','thank','thanks','who are you','what can you','good morning','good evening','bye','joke','how are you'];
-    var isDirect=false;
-    for(var i=0;i<dc.length;i++){if(cmd.includes(dc[i])){isDirect=true;break}}
-    if(isDirect){
-      processing=true;
-      stopRecognition();
-      callHermes(text);
-      return;
     }
   };
 
   recognition.onerror=function(e){
     if(e.error==='not-allowed'){setStatus('error','Microphone blocked');return}
-    // Restart on transient errors (no-speech, abort, etc.)
     if(e.error==='no-speech'||e.error==='abort'){scheduleWakeListening()}
   };
 
   recognition.onend=function(){
-    // Auto-restart if not in push-to-talk or processing mode
+    stopMicLevel();
     if(!pushToTalk&&!processing)scheduleWakeListening();
   };
 
@@ -345,13 +424,12 @@ function stopRecognition(){
   isListening=false;
   micBtn.classList.remove('active','holding');
   animateEq(false);
+  stopMicLevel();
 }
 
 function scheduleWakeListening(){
-  // Don't restart while speaking or processing
   if(speaking||processing||pushToTalk)return;
   if(isListening)return;
-  // Small delay to avoid rapid restart loops
   setTimeout(function(){startRecognition()},300);
 }
 
@@ -361,7 +439,6 @@ micBtn.addEventListener('touchstart',function(e){
   if(isListening)stopRecognition();
   pushToTalk=true;
   micBtn.classList.add('holding');
-  // For PTT use one-shot mode
   var pttSR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!pttSR)return;
   var pttRec=new pttSR();
@@ -372,6 +449,7 @@ micBtn.addEventListener('touchstart',function(e){
   setStatus('listening','');
   micBtn.classList.add('active');
   animateEq(true);
+  startMicLevel();
   pttRec.onresult=function(e){
     var text='';
     for(var i=0;i<e.results.length;i++){
@@ -381,7 +459,7 @@ micBtn.addEventListener('touchstart',function(e){
     if(text){
       transcriptEl.innerHTML='<span>'+esc(text)+'</span>';
       var cmd=text.toLowerCase().trim();
-      var afterWake=cmd.replace(/^(?:hey\s+)?(?:kitt|hermes|jarvis)[,!\s]*/i,'').trim();
+      var afterWake=cmd.replace(/^(?:hey\s+)?(?:kitt|hermes|jarvis)[,!?\s]*/i,'').trim();
       processing=true;
       if(afterWake&&afterWake!==cmd){
         callHermes(afterWake);
@@ -394,30 +472,25 @@ micBtn.addEventListener('touchstart',function(e){
     try{pttRec.stop()}catch(e){}
     micBtn.classList.remove('active','holding');
     animateEq(false);
+    stopMicLevel();
   };
   pttRec.onerror=function(){
     micBtn.classList.remove('active','holding');
     animateEq(false);
+    stopMicLevel();
   };
   pttRec.onend=function(){
     micBtn.classList.remove('active','holding');
     animateEq(false);
+    stopMicLevel();
     pushToTalk=false;
   };
   try{pttRec.start()}catch(e){pushToTalk=false;micBtn.classList.remove('holding')}
 });
 
-micBtn.addEventListener('touchend',function(e){
-  e.preventDefault();
-  // Recognition will stop via onend
-});
+micBtn.addEventListener('touchend',function(e){e.preventDefault()});
+micBtn.addEventListener('touchcancel',function(e){pushToTalk=false;micBtn.classList.remove('holding')});
 
-micBtn.addEventListener('touchcancel',function(e){
-  pushToTalk=false;
-  micBtn.classList.remove('holding');
-});
-
-// Mouse fallback for desktop
 micBtn.addEventListener('mousedown',function(){
   if(isListening)stopRecognition();
   pushToTalk=true;
@@ -428,10 +501,39 @@ micBtn.addEventListener('mouseleave',function(){
   if(pushToTalk){pushToTalk=false;stopRecognition()}
 });
 
+// ── Text mode toggle ──
+textToggle.addEventListener('click',function(){
+  var open=textBar.classList.toggle('open');
+  textToggle.textContent=open?'🎤':'⌨';
+  if(open){
+    textInput.focus();
+    if(isListening)stopRecognition();
+  } else {
+    scheduleWakeListening();
+  }
+});
+
+function submitText(){
+  var text=textInput.value.trim();
+  if(!text)return;
+  textInput.value='';
+  processing=true;
+  stopRecognition();
+  textBar.classList.remove('open');
+  textToggle.textContent='⌨';
+  transcriptEl.innerHTML='<span>'+esc(text)+'</span>';
+  callHermes(text);
+}
+
+textSend.addEventListener('click',submitText);
+textInput.addEventListener('keydown',function(e){
+  if(e.key==='Enter')submitText();
+});
+
 // ── Ambient mode: triple-tap ──
 var tapCount=0,tapTimer=null,ambientMode=false;
 document.addEventListener('click',function(e){
-  if(e.target.closest('#mic')||e.target.closest('#ft a'))return;
+  if(e.target.closest('#mic')||e.target.closest('#ft a')||e.target.closest('#text-toggle')||e.target.closest('#text-bar'))return;
   tapCount++;
   if(tapCount===1){tapTimer=setTimeout(function(){tapCount=0},500)}
   else if(tapCount>=3){
@@ -446,8 +548,12 @@ if(window.speechSynthesis){
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged=function(){window.speechSynthesis.getVoices()};
 }
+loadHistory();
 setTimeout(function(){try{startRecognition()}catch(e){setStatus('error','')}},800);
 if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
 
+console.log('KITT v5 — Jarvis ready');
 })();
 </script>
+</body>
+</html>
