@@ -73,7 +73,7 @@ app.post('/api', express.json(), async (req, res) => {
   const isComplex = complexKeywords.some(k => cmd.includes(k));
   
   if (isComplex) {
-    const BOT_TOKEN=*** || '';
+    const BOT_TOKEN=process.env.TELEGRAM_BOT_TOKEN || '';
     const CHAT_ID = process.env.TELEGRAM_CHAT_ID || '8973134274';
     if (BOT_TOKEN) {
       try {
