@@ -52,9 +52,9 @@ app.post('/api', express.json(), async (req, res) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         chat_id: TELEGRAM_CHAT_ID, 
-        text: '🎙️ KITT: ' + command
+        text: 'KITT: ' + command
       })
-    }).catch(e => console.error('Telegram bridge err:', e.message));
+    }).then(r => console.log('Telegram sent:', r.status)).catch(e => console.error('Telegram bridge err:', e.message));
     
     return res.json({ 
       response: "I'll ask Hermes about that right now. You'll get the result shortly!", 
