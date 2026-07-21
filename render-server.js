@@ -52,7 +52,12 @@ app.post('/api', express.json(), async (req, res) => {
     const req = https.request('https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, (res) => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => console.log('Telegram sent:', res.statusCode));
     });
+    req.on('error', e => console.error('Telegram err:', e.message));
     req.write(body);
     req.end();
     
