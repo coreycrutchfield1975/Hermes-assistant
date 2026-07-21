@@ -28,6 +28,7 @@ function sendTelegram(text) {
         if (res.statusCode < 200 || res.statusCode >= 300) {
           reject(new Error('Telegram ' + res.statusCode + ': ' + d.substring(0,200)));
         } else {
+          console.log('Telegram body:', d.substring(0,200));
           resolve(d);
         }
       });
