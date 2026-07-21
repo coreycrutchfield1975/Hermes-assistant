@@ -70,14 +70,18 @@ app.post('/api', express.json(), async (req, res) => {
   const complexWords = ['deploy', 'edit', 'build', 'create', 'update', 'change', 'fix', 'add', 'remove', 'make', 'schedule', 'remind', 'email', 'message', 'send', 'research', 'what is', 'how do', 'search web'];
   const needsBridge = complexWords.some(w => cmd.includes(w));
   
-  // Async Telegram bridge — fires and forgets, KITT responds instantly
+  // Async Telegram bridge — KITT responds instantly while Telegram sends
   if (needsBridge && BOT_TOKEN) {
-    sendTelegram('KITT: ' + command).catch(e => console.error('Telegram err:', e.message));
-    // Don't await — KITT responds immediately, Telegram sends in background
-    return res.json({
+    // Fire Telegram in background
+    const promise = sendTelegram('KITT: ' + command)
+      .catch(e => console.error('Telegram err:', e.message));
+    res.json({
       response: "I'll ask Hermes about that right now. You'll get the result shortly!", 
       action: 'speak' 
     });
+    // Keep the connection alive long enough for the Telegram request to fire
+    await promise;
+    return;
   }
   
   // Groq AI for conversation (fallback for simple chat)
