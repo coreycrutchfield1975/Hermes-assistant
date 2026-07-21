@@ -12,14 +12,19 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '8973134274';
 function sendTelegram(text) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text });
-    const req = https.request('https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage', {
+    const url = require('url').parse('https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage');
+    const opts = {
+      hostname: url.hostname,
+      port: 443,
+      path: url.path,
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
-    }, (res) => {
+    };
+    const req = https.request(opts, (res) => {
       let d = '';
       res.on('data', c => d += c);
       res.on('end', () => {
-        console.log('Telegram sent:', res.statusCode);
+        console.log('Telegram status:', res.statusCode);
         if (res.statusCode < 200 || res.statusCode >= 300) {
           reject(new Error('Telegram ' + res.statusCode + ': ' + d.substring(0,200)));
         } else {
@@ -72,6 +77,7 @@ app.post('/api', express.json(), async (req, res) => {
   
   // Async Telegram bridge — KITT responds instantly while Telegram sends
   if (needsBridge && BOT_TOKEN) {
+    console.log('Bridge triggered for:', cmd);
     // Fire Telegram in background
     const promise = sendTelegram('KITT: ' + command)
       .catch(e => console.error('Telegram err:', e.message));
