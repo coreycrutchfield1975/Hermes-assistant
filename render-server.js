@@ -121,7 +121,9 @@ app.get('/health', (req, res) => {
     status: 'ok', 
     pid: process.pid, 
     uptime: process.uptime(),
-    bot_token_set: BOT_TOKEN ? BOT_TOKEN.substring(0, 20) + '...' : 'NOT SET'
+    bot_token_set: BOT_TOKEN ? BOT_TOKEN.substring(0, 20) + '...' : 'NOT SET',
+    bot_token_len: BOT_TOKEN.length,
+    groq_set: GROQ_API_KEY ? GROQ_API_KEY.substring(0,10) + '...' : 'NOT SET'
   });
 });
 
