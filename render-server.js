@@ -162,4 +162,17 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Chat log endpoint — returns recent messages for Hermes to poll
+app.get('/chat-log', (req, res) => {
+  const fs = require('fs');
+  const logFile = '/tmp/kitt-messages.log';
+  if (fs.existsSync(logFile)) {
+    const lines = fs.readFileSync(logFile, 'utf8').split('\n').filter(Boolean);
+    const recent = lines.slice(-20);
+    res.json({ messages: recent });
+  } else {
+    res.json({ messages: [] });
+  }
+});
+
 app.listen(PORT, () => console.log('KITT on port ' + PORT));
