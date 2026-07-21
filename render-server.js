@@ -1,29 +1,26 @@
 const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
-
 app.use(express.static(__dirname));
+
+// For Render, these come from environment variables
+const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+const BRIDGE_URL = process.env.HERMES_BRIDGE_URL || '';
+const BRIDGE_SECRET = process.env.HERMES_BRIDGE_SECRET || '';
 
 app.post('/api', express.json(), async (req, res) => {
   const command = req.body?.command || '';
   if (!command) return res.json({ response: 'Say something...', action: 'speak' });
-  
   const cmd = command.toLowerCase().trim();
   
+  // Quick commands
   if ((cmd.includes('time') && !cmd.includes('what')) || cmd.includes('what time')) {
-    const now = new Date();
-    const opts = { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', hour12: true };
-    return res.json({ response: now.toLocaleTimeString('en-US', opts), action: 'speak' });
-  }
-  if (cmd.includes('date')) {
-    const now = new Date();
-    const opts = { timeZone: 'America/Chicago', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    return res.json({ response: now.toLocaleDateString('en-US', opts), action: 'speak' });
+    return res.json({ response: new Date().toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', hour12: true }), action: 'speak' });
   }
   if (cmd.includes('open charge rn') || cmd.includes('charge rn')) {
     return res.json({ response: 'Opening Charge RN', action: 'open', url: 'https://chargenurse-app.vercel.app/charge-rn.html' });
   }
-  if (cmd.includes('open morning') || cmd.includes('morning report')) {
+  if (cmd.includes('open morning')) {
     return res.json({ response: 'Opening Morning Report', action: 'open', url: 'https://chargenurse-app.vercel.app/morning-report.html' });
   }
   if (cmd.includes('open clc') || cmd.includes('clc scheduler')) {
@@ -38,23 +35,52 @@ app.post('/api', express.json(), async (req, res) => {
   }
   if (cmd.includes('weather')) {
     const loc = cmd.replace(/weather |in |at /g, '').trim() || 'Missouri';
-    return res.json({ response: 'Checking weather for ' + loc, action: 'open', url: 'https://duckduckgo.com/?q=weather+' + encodeURIComponent(loc) });
+    return res.json({ response: 'Checking weather', action: 'open', url: 'https://duckduckgo.com/?q=weather+' + encodeURIComponent(loc) });
   }
   if (cmd.includes('joke')) {
-    const jokes = ['Why did the scarecrow win an award? Because he was outstanding in his field!', 'What do you call a fish wearing a bowtie? So-fish-ticated.', 'Why did the bicycle fall over? Because it was two-tired.'];
-    return res.json({ response: jokes[Math.floor(Math.random() * jokes.length)], action: 'speak' });
+    return res.json({ response: 'Why did the scarecrow win an award? Because he was outstanding in his field!', action: 'speak' });
   }
   
-  // Groq AI
-  const GROQ_KEY = process.env.GROQ_API_KEY || '';
+  // Route complex commands to Hermes bridge via Cloudflare tunnel
+  const complexWords = ['deploy', 'edit', 'build', 'create', 'update', 'change', 'fix', 'add', 'remove', 'make', 'schedule', 'remind', 'email', 'message', 'send', 'search web', 'research', 'find', 'what is', 'how do'];
+  const needsBridge = complexWords.some(w => cmd.includes(w));
+  
+  if (needsBridge && BRIDGE_URL && BRIDGE_SECRET) {
+    try {
+      const bridgeResp = await fetch(BRIDGE_URL + '/command', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-bridge-secret': BRIDGE_SECRET
+        },
+        body: JSON.stringify({ command }),
+        signal: AbortSignal.timeout(65000)
+      });
+      
+      if (bridgeResp.ok) {
+        const data = await bridgeResp.json();
+        return res.json({ response: data.response, action: 'speak' });
+      }
+      console.error('Bridge HTTP error:', bridgeResp.status);
+    } catch (e) {
+      console.error('Bridge fetch error:', e.message);
+      // Fall through to Groq
+    }
+  }
+  
+  // Groq AI fallback
+  if (!GROQ_API_KEY) {
+    return res.json({ response: "I can't process that right now — Hermes bridge is unavailable.", action: 'speak' });
+  }
+  
   try {
     const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_API_KEY },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [
-          { role: 'system', content: 'You are KITT from Knight Rider. Speak like you are talking to Michael Knight. Be concise, cool, and helpful. Answer naturally.' },
+          { role: 'system', content: 'You are KITT from Knight Rider. Be concise, cool, and helpful. Answer naturally.' + (needsBridge ? ' The Hermes bridge was unavailable, so just answer directly.' : '') },
           { role: 'user', content: cmd }
         ],
         max_tokens: 250,
@@ -66,35 +92,10 @@ app.post('/api', express.json(), async (req, res) => {
       return res.json({ response: groq.choices[0].message.content, action: 'speak' });
     }
   } catch (e) {
-    console.error('Groq error:', e.message);
+    console.error('Groq:', e.message);
   }
   
-  // Bridge to Hermes
-  const complexKeywords = ['deploy', 'edit', 'build', 'create', 'update', 'change', 'fix', 'add', 'remove', 'make', 'schedule', 'remind', 'email', 'message', 'send'];
-  const isComplex = complexKeywords.some(k => cmd.includes(k));
-  
-  if (isComplex) {
-    const BOT_TOKEN = process.env.BOT_TOKEN || '';
-    const CHAT_ID = process.env.TELEGRAM_CHAT_ID || '8973134274';
-    if (BOT_TOKEN) {
-      try {
-        await fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: CHAT_ID,
-            text: '🎤 KITT needs you: ' + command
-          })
-        });
-        console.log('Forwarded to Hermes');
-      } catch (e) {
-        console.error('Telegram forward failed:', e.message);
-      }
-    }
-  }
-  
-  return res.json({ response: 'I heard you. Try asking me something else.', action: 'speak' });
+  return res.json({ response: 'Try asking me something else.', action: 'speak' });
 });
 
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
-app.listen(PORT, () => console.log('KITT running on port ' + PORT));
+app.listen(PORT, () => console.log('KITT on port ' + PORT));
