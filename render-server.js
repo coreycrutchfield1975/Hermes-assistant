@@ -94,7 +94,12 @@ app.post('/api', express.json(), async (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', pid: process.pid, uptime: process.uptime() });
+  res.json({ 
+    status: 'ok', 
+    pid: process.pid, 
+    uptime: process.uptime(),
+    bot_token_set: BOT_TOKEN ? BOT_TOKEN.substring(0, 20) + '...' : 'NOT SET'
+  });
 });
 
 app.listen(PORT, () => console.log('KITT on port ' + PORT));
