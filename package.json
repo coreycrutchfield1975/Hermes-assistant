@@ -2,8 +2,11 @@
   "name": "hermes-jarvis",
   "version": "1.0.0",
   "scripts": {
-    "start": "node server.js",
+    "start": "node render-server.js",
     "build": "echo 'Static site - no build needed'"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
     "express": "^4.18.2"
