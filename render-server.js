@@ -1,4 +1,5 @@
 const express = require('express');
+const https = require('https');
 const app = express();
 const PORT = process.env.PORT || 10000;
 app.use(express.static(__dirname));
@@ -7,6 +8,26 @@ app.use(express.static(__dirname));
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '8973134274';
+
+function sendTelegram(text) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text });
+    const req = https.request('https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, (res) => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => {
+        console.log('Telegram sent:', res.statusCode);
+        resolve(d);
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
 
 app.post('/api', express.json(), async (req, res) => {
   const command = req.body?.command || '';
@@ -47,20 +68,7 @@ app.post('/api', express.json(), async (req, res) => {
   
   // Async Telegram bridge — fires and forgets, KITT responds instantly
   if (needsBridge && BOT_TOKEN) {
-    const https = require('https');
-    const body = JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: 'KITT: ' + command });
-    const req = https.request('https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
-    }, (res) => {
-      let d = '';
-      res.on('data', c => d += c);
-      res.on('end', () => console.log('Telegram sent:', res.statusCode));
-    });
-    req.on('error', e => console.error('Telegram err:', e.message));
-    req.write(body);
-    req.end();
-    
+    sendTelegram('KITT: ' + command).catch(e => console.error('Telegram err:', e.message));
     return res.json({
       response: "I'll ask Hermes about that right now. You'll get the result shortly!", 
       action: 'speak' 
@@ -95,6 +103,16 @@ app.post('/api', express.json(), async (req, res) => {
   }
   
   return res.json({ response: 'Try asking me something else.', action: 'speak' });
+});
+
+// Telegram test endpoint
+app.get('/test-telegram', async (req, res) => {
+  try {
+    const result = await sendTelegram('Render bridge test');
+    res.json({ ok: true, result: result.substring(0, 200) });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
 });
 
 // Health check
