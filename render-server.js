@@ -20,7 +20,11 @@ function sendTelegram(text) {
       res.on('data', c => d += c);
       res.on('end', () => {
         console.log('Telegram sent:', res.statusCode);
-        resolve(d);
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          reject(new Error('Telegram ' + res.statusCode + ': ' + d.substring(0,200)));
+        } else {
+          resolve(d);
+        }
       });
     });
     req.on('error', reject);
@@ -69,6 +73,7 @@ app.post('/api', express.json(), async (req, res) => {
   // Async Telegram bridge — fires and forgets, KITT responds instantly
   if (needsBridge && BOT_TOKEN) {
     sendTelegram('KITT: ' + command).catch(e => console.error('Telegram err:', e.message));
+    // Don't await — KITT responds immediately, Telegram sends in background
     return res.json({
       response: "I'll ask Hermes about that right now. You'll get the result shortly!", 
       action: 'speak' 
