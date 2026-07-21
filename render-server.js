@@ -54,7 +54,7 @@ app.post('/api', express.json(), async (req, res) => {
           'x-bridge-secret': BRIDGE_SECRET
         },
         body: JSON.stringify({ command }),
-        signal: AbortSignal.timeout(65000)
+        signal: AbortSignal.timeout(90000) // 90s timeout
       });
       
       if (bridgeResp.ok) {
