@@ -131,6 +131,20 @@ app.get('/test-telegram', async (req, res) => {
   }
 });
 
+// Telegram webhook receiver — forwards bot messages to Hermes
+app.post('/telegram-webhook', express.json(), (req, res) => {
+  const msg = req.body?.message;
+  if (msg && msg.text && msg.chat) {
+    const text = msg.text;
+    const chatId = msg.chat.id;
+    const from = msg.from?.first_name || 'Unknown';
+    console.log(`Telegram from ${from} (${chatId}): ${text}`);
+    // Forward to Hermes via sendTelegram
+    sendTelegram(`${from} via Telegram: ${text}`).catch(e => console.error('Forward err:', e.message));
+  }
+  res.sendStatus(200);
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 
