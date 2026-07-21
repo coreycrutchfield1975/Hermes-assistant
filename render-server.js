@@ -138,8 +138,13 @@ app.post('/telegram-webhook', express.json(), (req, res) => {
     const text = msg.text;
     const chatId = msg.chat.id;
     const from = msg.from?.first_name || 'Unknown';
-    console.log(`Telegram from ${from} (${chatId}): ${text}`);
-    // Forward to Hermes via sendTelegram
+    const ts = new Date().toISOString();
+    const entry = `[${ts}] ${from}: ${text}`;
+    console.log(entry);
+    // Append to a simple log file that Hermes can read via cron
+    const fs = require('fs');
+    fs.appendFile('/tmp/kitt-messages.log', entry + '\n', () => {});
+    // Forward to Telegram as confirmation
     sendTelegram(`${from} via Telegram: ${text}`).catch(e => console.error('Forward err:', e.message));
   }
   res.sendStatus(200);
