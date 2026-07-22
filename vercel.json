@@ -1,11 +1,8 @@
 {
   "version": 2,
   "functions": {
-    "api/hermes.js": {
+    "api/index.js": {
       "maxDuration": 30
-    },
-    "api/telegram-webhook.js": {
-      "maxDuration": 10
     }
   },
   "buildCommand": null,
