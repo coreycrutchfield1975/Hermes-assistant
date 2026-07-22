@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>KITT — Voice Agent</title>
+<meta name="theme-color" content="#050508">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Orbitron:wght@400;600;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--r:#ff1a1a;--r2:#cc0000;--g:#ff3333;--d:#050508;--d2:#0a0a0f;--panel:#0d0d15;--c:#00e5ff;--a:#ff8c00;--font-tech:'Orbitron',sans-serif;--font-body:'Inter',sans-serif}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--d);font-family:var(--font-body);touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;position:fixed;overscroll-behavior:none}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+#bg{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at bottom,#0a0a0f 0%,#030306 100%);pointer-events:none}
+#grid{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(255,26,26,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,26,26,0.03) 1px,transparent 1px);background-size:30px 30px}
+#dash{position:fixed;bottom:0;left:0;right:0;height:20%;z-index:3;pointer-events:none}
+#dash::before{content:'';position:absolute;bottom:0;left:0;right:0;height:100%;background:linear-gradient(180deg,transparent 0%,rgba(5,5,8,0.95) 25%,rgba(3,3,6,1) 100%);border-top:1px solid rgba(255,26,26,0.03)}
+
+/* Scanner */
+#scan{position:fixed;top:50%;left:0;right:0;height:3px;z-index:5;transform:translateY(-50%);pointer-events:none}
+#scan .track{position:absolute;inset:0;background:rgba(255,26,26,0.05)}
+#scan .led{position:absolute;width:100px;height:3px;background:var(--r);box-shadow:0 0 25px rgba(255,26,26,0.9),0 0 60px rgba(255,26,26,0.4),0 0 120px rgba(255,26,26,0.2);animation:scan 2.8s ease-in-out infinite;border-radius:1.5px}
+#scan .led2{position:absolute;width:50px;height:2px;background:rgba(255,26,26,0.35);animation:scan2 2.8s ease-in-out infinite 0.4s;border-radius:1px}
+@keyframes scan{0%{left:-100px}50%{left:calc(100% - 100px)}100%{left:-100px}}
+@keyframes scan2{0%{left:-50px}50%{left:calc(100% - 50px)}100%{left:-50px}}
+
+/* Equalizer — classic KITT 3-bar style */
+#eq{position:fixed;bottom:clamp(100px,15vh,130px);left:50%;transform:translateX(-50%);z-index:4;display:flex;align-items:flex-end;justify-content:center;gap:clamp(8px,1.5vw,14px);height:clamp(50px,8vh,70px);width:clamp(120px,30vw,200px);pointer-events:none;opacity:0.2;transition:opacity 0.5s}
+#eq.active{opacity:1}
+.eq-bar{width:clamp(12px,3vw,20px);background:linear-gradient(180deg,var(--r),var(--r2));border-radius:3px 3px 0 0;min-height:6px;transition:height 0.06s ease;box-shadow:0 0 12px rgba(255,26,26,0.4)}
+.eq-bar:nth-child(2){margin:0 2px}
+
+/* Mic level meter */
+#mic-level{position:fixed;bottom:clamp(100px,16vh,140px);left:50%;transform:translateX(-50%);z-index:6;width:clamp(120px,40vw,200px);height:4px;background:rgba(255,26,26,0.08);border-radius:2px;opacity:0;transition:opacity 0.3s;overflow:hidden}
+#mic-level.active{opacity:1}
+#mic-level .fill{height:100%;width:0%;background:linear-gradient(90deg,var(--r2),var(--r),#ff6666);border-radius:2px;transition:width 0.05s linear}
+
+/* Status — moved to bottom near mic */
+#status{position:fixed;bottom:clamp(90px,14vh,120px);left:50%;transform:translateX(-50%);z-index:5;pointer-events:none;font-size:clamp(0.6rem,1.4vw,0.75rem);letter-spacing:4px;color:rgba(255,26,26,0.25);text-transform:uppercase;font-weight:600;transition:all 0.4s;white-space:nowrap;background:rgba(5,5,8,0.4);padding:3px 10px;border-radius:6px;border:1px solid rgba(255,26,26,0.04);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+#status.listening{color:var(--r);text-shadow:0 0 20px rgba(255,26,26,0.3);border-color:rgba(255,26,26,0.15)}
+#status.wake{color:#ff6666;text-shadow:0 0 25px rgba(255,26,26,0.5);border-color:rgba(255,26,26,0.25)}
+#status.processing{color:#ff4444;text-shadow:0 0 20px rgba(255,26,26,0.4);border-color:rgba(255,26,26,0.2)}
+#status.error{color:#ff4444;border-color:rgba(255,26,26,0.2)}
+#status.ambient{color:rgba(255,26,26,0.08);border-color:rgba(255,26,26,0.03);text-shadow:none}
+
+/* Hero — with KITT car side profile */
+#hero{position:fixed;top:clamp(12px,2vh,24px);left:50%;transform:translateX(-50%);z-index:5;text-align:center;pointer-events:none;width:100%;display:flex;align-items:center;justify-content:center;gap:clamp(6px,1.5vw,14px);flex-wrap:nowrap}
+#hero .big{font-size:clamp(2rem,10vw,3.5rem);font-weight:900;letter-spacing:6px;background:linear-gradient(180deg,#ff1a1a,#990000);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-family:var(--font-tech);line-height:1.1}
+#hero .sub{position:absolute;top:100%;left:0;right:0;font-size:clamp(0.55rem,1.5vw,0.7rem);font-family:var(--font-tech);letter-spacing:3px;color:var(--a);opacity:0.35;margin-top:2px;text-shadow:0 0 10px rgba(255,140,0,0.08)}
+#heroCarImg{height:clamp(36px,7vh,60px);width:auto;filter:drop-shadow(0 0 10px rgba(255,26,26,0.2));opacity:0.7}
+body.ambient #hero .sub{opacity:0.1}
+body.ambient #hero .big{opacity:0.08;transition:opacity 2s}
+#chat{position:fixed;top:clamp(88px,13vh,108px);left:6%;right:6%;bottom:clamp(175px,26vh,220px);z-index:5;overflow-y:auto;overflow-x:hidden;pointer-events:auto;scrollbar-width:thin;scrollbar-color:rgba(255,26,26,0.1) transparent;padding:6px 4px;-webkit-overflow-scrolling:touch}
+#chat::-webkit-scrollbar{width:2px}
+#chat::-webkit-scrollbar-thumb{background:rgba(255,26,26,0.15);border-radius:2px}
+.msg{font-size:clamp(1rem,3vw,1.3rem);padding:5px 0;line-height:1.5;animation:fadeIn 0.3s ease;word-break:break-word}
+.msg.you{color:var(--c);text-align:left;text-shadow:0 0 8px rgba(0,229,255,0.08)}
+.msg.kitt{color:var(--a);text-align:left;text-shadow:0 0 8px rgba(255,140,0,0.08)}
+.msg .lbl{font-size:clamp(0.7rem,1.8vw,0.85rem);letter-spacing:2px;text-transform:uppercase;opacity:0.3;margin-right:4px;font-weight:600}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* Transcript */
+#transcript{position:absolute;bottom:clamp(85px,12vh,105px);left:50%;transform:translateX(-50%);z-index:5;font-size:clamp(0.9rem,2.5vw,1.1rem);color:rgba(255,255,255,0.5);text-align:center;font-weight:300;letter-spacing:0.3px;pointer-events:none;line-height:1.5;width:80%;max-width:400px}
+
+/* Mic button */
+#mic{position:absolute;bottom:clamp(18px,3vh,30px);left:50%;transform:translateX(-50%);z-index:10;width:clamp(54px,9vw,68px);height:clamp(54px,9vw,68px);border-radius:50%;border:2px solid rgba(255,26,26,0.2);background:rgba(255,26,26,0.05);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;color:rgba(255,26,26,0.4);font-size:clamp(22px,4vw,28px);-webkit-touch-callout:none;-webkit-user-select:none}
+#mic:active{transform:translateX(-50%) scale(0.88)}
+#mic.active{animation:micPulse 1.8s ease-in-out infinite;border-color:var(--r);background:rgba(255,26,26,0.1);color:var(--r)}
+#mic.holding{transform:translateX(-50%) scale(0.92);border-color:var(--r);background:rgba(255,26,26,0.12);color:var(--r)}
+@keyframes micPulse{0%,100%{box-shadow:0 0 15px rgba(255,26,26,0.1);transform:translateX(-50%) scale(1)}50%{box-shadow:0 0 35px rgba(255,26,26,0.25);transform:translateX(-50%) scale(1.06)}}
+
+/* Text input bar */
+#text-bar{position:fixed;bottom:0;left:0;right:0;z-index:20;background:rgba(5,5,8,0.95);border-top:1px solid rgba(255,26,26,0.1);padding:clamp(8px,1.5vh,14px);display:none;gap:8px;align-items:center;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+#text-bar.open{display:flex}
+#text-input{flex:1;background:rgba(255,26,26,0.05);border:1px solid rgba(255,26,26,0.15);border-radius:10px;padding:clamp(10px,1.5vh,14px);color:#e8edf5;font-size:clamp(0.9rem,2.5vw,1.1rem);font-family:'Inter',sans-serif;outline:none}
+#text-input:focus{border-color:var(--r)}
+#text-send{background:var(--r);border:none;border-radius:10px;padding:clamp(10px,1.5vh,14px) clamp(16px,3vw,24px);color:#fff;font-size:clamp(0.9rem,2.5vw,1.1rem);font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:opacity 0.2s}
+#text-send:active{opacity:0.7}
+#text-toggle{position:absolute;bottom:clamp(70px,11vh,90px);right:clamp(12px,3vw,20px);z-index:11;background:rgba(255,26,26,0.05);border:1px solid rgba(255,26,26,0.12);border-radius:8px;padding:6px 10px;color:rgba(255,26,26,0.4);font-size:clamp(14px,2.5vw,18px);cursor:pointer;transition:all 0.2s;font-family:'Inter',sans-serif}
+#text-toggle:active{background:rgba(255,26,26,0.1);color:var(--r)}
+
+/* Footer */
+#ft{position:absolute;bottom:clamp(4px,0.6vh,8px);left:0;right:0;text-align:center;z-index:10;font-size:clamp(0.5rem,1.2vw,0.6rem);color:rgba(255,26,26,0.08);letter-spacing:4px;text-transform:uppercase;pointer-events:none}
+#ft a{color:rgba(255,26,26,0.12);text-decoration:none;pointer-events:auto;transition:color 0.3s}
+#ft a:active{color:rgba(255,26,26,0.3)}
+
+/* Ambient mode */
+body.ambient #hero .big{opacity:0.08;transition:opacity 2s}
+body.ambient #scan .led{animation-duration:5s;opacity:0.25}
+body.ambient #mic{opacity:0.1;transform:translateX(-50%) scale(0.6);pointer-events:none;transition:all 2s}
+body.ambient #status{opacity:0.12;transition:opacity 2s}
+body.ambient #chat{opacity:0.1;transition:opacity 2s}
+body.ambient #eq{opacity:0.05;transition:opacity 2s}
+body.listening-active #scan .led{animation-duration:1.2s;box-shadow:0 0 35px rgba(255,26,26,1),0 0 80px rgba(255,26,26,0.5),0 0 150px rgba(255,26,26,0.2)}
+body.listening-active #eq{opacity:1!important}
+
+/* Typing dots */
+#typing{display:none;position:fixed;top:clamp(78px,12vh,105px);left:50%;transform:translateX(-50%);z-index:6;gap:4px;align-items:center;pointer-events:none}
+#typing.active{display:flex}
+.typing-dot{width:5px;height:5px;border-radius:50%;background:var(--r);animation:typingPulse 1.2s ease-in-out infinite}
+.typing-dot:nth-child(2){animation-delay:0.2s}
+.typing-dot:nth-child(3){animation-delay:0.4s}
+@keyframes typingPulse{0%,100%{opacity:0.2;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
+
+/* PWA install banner */
+#pwa-banner{position:fixed;bottom:clamp(90px,14vh,120px);left:50%;transform:translateX(-50%);z-index:15;background:rgba(13,13,21,0.95);border:1px solid rgba(255,26,26,0.15);border-radius:14px;padding:14px 18px;max-width:360px;width:90%;display:none;align-items:center;gap:12px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);animation:fadeIn 0.5s ease}
+#pwa-banner.show{display:flex}
+#pwa-banner .icon{width:38px;height:38px;border-radius:8px;background:var(--r);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0}
+#pwa-banner .txt{flex:1;font-size:0.8rem;color:rgba(255,255,255,0.7);line-height:1.3}
+#pwa-banner .txt strong{color:#fff;display:block}
+#pwa-banner .btn-install{background:var(--r);border:none;color:#fff;padding:8px 16px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'Inter',sans-serif}
+#pwa-banner .btn-close{background:none;border:none;color:rgba(255,255,255,0.3);font-size:1.2rem;cursor:pointer;padding:4px}
+</style>
+</head>
+<body>
+
+<div id="bg"></div>
+<div id="grid"></div>
+<div id="dash"></div>
+
+<!-- Bottom car removed -->
+
+<div id="hero">
+  <div id="hero-car"><img src="/assets/kitt.svg" alt="KITT" id="heroCarImg"></div>
+
+  <div class="big">KITT</div>
+  <div class="sub">ONLINE</div>
+</div>
+
+<div id="typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+<div id="status">■ STANDBY</div>
+<div id="scan"><div class="track"></div><div class="led"></div><div class="led2"></div></div>
+<div id="eq"></div>
+<div id="mic-level"><div class="fill" id="micLevelFill"></div></div>
+<div id="chat"></div>
+<div id="transcript"><span>Say "Hey KITT" or hold the mic</span></div>
+
+<!-- PWA install banner -->
+<div id="pwa-banner">
+  <div class="icon">K</div>
+  <div class="txt"><strong>KITT — Voice Agent</strong>Add to home screen for the full experience</div>
+  <button class="btn-install" id="btnPwaInstall">Install</button>
+  <button class="btn-close" id="btnPwaClose">✕</button>
+</div>
+
+<button id="mic" aria-label="Microphone">🎤</button>
+<button id="text-toggle">⌨</button>
+<div id="text-bar">
+  <input id="text-input" type="text" placeholder="Type a command..." autocomplete="off">
+  <button id="text-send">Send</button>
+</div>
+<div id="ft"><a href="tg://resolve?domain=Coreysflybot" target="_blank" rel="noopener">⟐ KNIGHT INDUSTRIES</a></div>
+
+<script>
+(function(){
+'use strict';
+
+// ── DOM ──
+var statusEl=document.getElementById('status');
+var micBtn=document.getElementById('mic');
+var transcriptEl=document.getElementById('transcript');
+var chatEl=document.getElementById('chat');
+var eqEl=document.getElementById('eq');
+var micLevelEl=document.getElementById('mic-level');
+var micLevelFill=document.getElementById('micLevelFill');
+var typingEl=document.getElementById('typing');
+var textToggle=document.getElementById('text-toggle');
+var textBar=document.getElementById('text-bar');
+var textInput=document.getElementById('text-input');
+var textSend=document.getElementById('text-send');
+var kittCar=document.getElementById('kitt-car');
+var pwaBanner=document.getElementById('pwa-banner');
+var btnPwaInstall=document.getElementById('btnPwaInstall');
+var btnPwaClose=document.getElementById('btnPwaClose');
+
+// ── Equalizer — classic KITT 3-bar ──
+var EQ_COUNT=3,eqBars=[],eqPhase=0;
+(function(){
+  for(var i=0;i<EQ_COUNT;i++){
+    var bar=document.createElement('div');
+    bar.className='eq-bar';bar.style.height='6px';
+    eqEl.appendChild(bar);eqBars.push(bar);
+  }
+})();
+
+function animateEq(active){
+  eqEl.className=active?'active':'';
+}
+function eqLoop(){
+  eqPhase+=0.08;
+  var active=eqEl.className==='active';
+  var base=active?1.0:0.06;
+  var t=eqPhase;
+  var h=eqEl.getBoundingClientRect().height||60;
+  // 3 bars with different frequencies — classic KITT wave
+  var v0=base*(0.5+0.5*Math.sin(t*1.2));
+  var v1=base*(0.5+0.5*Math.sin(t*2.0+1.2));
+  var v2=base*(0.5+0.5*Math.sin(t*1.6+2.8));
+  eqBars[0].style.height=Math.max(6,Math.min(h,v0*h))+'px';
+  eqBars[1].style.height=Math.max(6,Math.min(h,v1*h))+'px';
+  eqBars[2].style.height=Math.max(6,Math.min(h,v2*h))+'px';
+  requestAnimationFrame(eqLoop);
+}
+eqLoop();
+
+// ── Rotating Knight Rider quotes ──
+var quotes=[
+  "One man can make a difference",
+  "I don't require a driver",
+  "Trust me, Michael",
+  "KITT online — systems fully operational",
+  "I never left you, Michael",
+  "The path of the righteous man",
+  "I am not a car. I am a computer.",
+  "Night and day. Light and dark.",
+  "We fight, we risk, we endure.",
+  "Justice is not a privilege, it's a right",
+  "I was programmed to preserve life",
+  "Michael, I have a bad feeling about this",
+  "You taught me what it means to be human",
+  "Knight Industries — protecting the innocent"
+];
+var quoteEl=document.getElementById('quote');
+var qi=0;
+function rotateQuote(){
+  qi=(qi+1)%quotes.length;
+  if(quoteEl){
+    quoteEl.style.opacity='0';
+    setTimeout(function(){
+      quoteEl.textContent=quotes[qi];
+      quoteEl.style.opacity='0.6';
+    },500);
+  }
+}
+if(quoteEl)setInterval(rotateQuote,8000);
+
+// ── Status ──
+var statusTimeout=null;
+
+function setStatus(state,msg){
+  statusEl.className=state;
+  var labels={listening:'LISTENING',wake:'AWAKE',processing:'PROCESSING',error:'ERROR',ambient:'AMBIENT'};
+  statusEl.textContent='\u25a0 '+(labels[state]||'STANDBY');
+  document.body.classList.toggle('listening-active',state==='wake'||state==='processing');
+  if(statusTimeout)clearTimeout(statusTimeout);
+  if(msg)transcriptEl.innerHTML='<span>'+esc(msg)+'</span>';
+  if(state==='processing'||state==='wake'){animateEq(true);typingEl.classList.add('active')}
+  else {animateEq(false);typingEl.classList.remove('active')}
+}
+
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;')}
+
+// ── Sound effects ──
+function playBeep(freq,duration,type){
+  try{
+    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    var osc=ctx.createOscillator();
+    var gain=ctx.createGain();
+    osc.type=type||'sine';
+    osc.frequency.value=freq;
+    gain.gain.setValueAtTime(0.15,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+duration);
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.start();osc.stop(ctx.currentTime+duration);
+  }catch(e){}
+}
+function playWake(){playBeep(880,0.12,'sine');setTimeout(function(){playBeep(1320,0.15,'sine')},120)}
+function playDone(){playBeep(660,0.08,'sine')}
+function playError(){playBeep(220,0.25,'sawtooth')}
+
+// ── Chat history ──
+var chatHistory=[];
+
+function loadHistory(){
+  try{
+    var saved=localStorage.getItem('kitt_history');
+    if(saved){
+      chatHistory=JSON.parse(saved);
+      for(var i=0;i<chatHistory.length;i++){
+        var h=chatHistory[i];
+        var div=document.createElement('div');
+        div.className='msg '+(h.role==='user'?'you':'kitt');
+        div.innerHTML='<span class="lbl">'+(h.role==='user'?'YOU':'KITT')+'</span>'+esc(h.text);
+        chatEl.appendChild(div);
+      }
+      chatEl.scrollTop=chatEl.scrollHeight;
+    }
+  }catch(e){}
+}
+
+function saveHistory(){
+  try{
+    localStorage.setItem('kitt_history',JSON.stringify(chatHistory.slice(-50)));
+  }catch(e){}
+}
+
+function addChat(role,text){
+  var div=document.createElement('div');
+  div.className='msg '+(role==='user'?'you':'kitt');
+  div.innerHTML='<span class="lbl">'+(role==='user'?'YOU':'KITT')+'</span>'+esc(text);
+  chatEl.appendChild(div);
+  chatEl.scrollTop=chatEl.scrollHeight;
+  chatHistory.push({role:role,text:text});
+  if(chatHistory.length>50)chatHistory.shift();
+  saveHistory();
+}
+
+// ── TTS ──
+var voiceReady=false;
+function ensureVoice(){
+  if(voiceReady)return;
+  var v=window.speechSynthesis.getVoices();
+  if(v&&v.length>0){voiceReady=true;return}
+  window.speechSynthesis.onvoiceschanged=function(){
+    voiceReady=true;
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged=null;
+  };
+  setTimeout(function(){
+    if(!voiceReady){
+      var v2=window.speechSynthesis.getVoices();
+      if(v2&&v2.length>0)voiceReady=true;
+    }
+  },500);
+}
+ensureVoice();
+
+function speak(text){
+  if(!window.speechSynthesis)return;
+  window.speechSynthesis.cancel();
+  var u=new SpeechSynthesisUtterance(text);
+  u.rate=0.7;u.pitch=0.35;u.volume=1;
+  u.lang='en-US';
+  var voices=window.speechSynthesis.getVoices();
+  var pref=voices.find(function(v){
+    return v.lang.startsWith('en')&&(v.name.includes('Male')||v.name.includes('David')||v.name.includes('Mark')||v.name.includes('Google UK')||v.name.includes('Samantha'));
+  })||voices.find(function(v){return v.name.includes('Microsoft')&&v.lang.startsWith('en')&&!v.name.includes('Zira');})||voices.find(function(v){return v.lang.startsWith('en')&&!v.name.includes('Female');})||voices.find(function(v){return v.lang.startsWith('en');});
+  if(pref)u.voice=pref;
+  u.onend=function(){scheduleWakeListening()};
+  window.speechSynthesis.speak(u);
+}
+
+// ── Mic level meter ──
+var micAnalyser=null,micData=null;
+function startMicLevel(){micLevelEl.classList.add('active');micLevelFill.style.width='0%';}
+function stopMicLevel(){micLevelEl.classList.remove('active');micLevelFill.style.width='0%';}
+function updateMicLevel(level){var pct=Math.min(100,Math.round(level*120));micLevelFill.style.width=pct+'%';}
+
+// ── API call ──
+function callHermes(cmd){
+  setStatus('processing','');
+  typingEl.classList.add('active');
+  addChat('user',cmd);
+  playWake();
+  
+  fetch('/command',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-bridge-secret':'0'},
+    body:JSON.stringify({command:cmd,history:chatHistory.slice(-10)})
+  })
+  .then(function(r){return r.json()})
+  .then(function(d){
+    var resp=d.response||'No response.';
+    typingEl.classList.remove('active');
+    addChat('kitt',resp);
+    speak(resp);
+    playDone();
+    if(d.action==='open'&&d.url){
+      setTimeout(function(){window.open(d.url,'_blank')},600);
+    }
+    setTimeout(function(){setStatus('listening','')},3000);
+  })
+  .catch(function(){
+    typingEl.classList.remove('active');
+    addChat('kitt','Connection error.');
+    playError();
+    setStatus('listening','');
+    scheduleWakeListening();
+  });
+}
+
+// ── Speech recognition ──
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+var recognition=null,isListening=false,pushToTalk=false,speaking=false,processing=false;
+
+function startRecognition(){
+  if(!SR){setStatus('error','');return}
+  if(recognition){try{recognition.abort()}catch(e){}}
+  recognition=new SR();
+  recognition.continuous=true;
+  recognition.interimResults=true;
+  recognition.lang='en-US';
+  recognition.maxAlternatives=3;
+  setStatus('listening','');
+  micBtn.classList.add('active');
+  animateEq(true);
+  startMicLevel();
+
+  var finalTranscript='';
+
+  recognition.onresult=function(e){
+    var interim='';
+    for(var i=0;i<e.results.length;i++){
+      var r=e.results[i];
+      if(r.isFinal)finalTranscript+=r[0].transcript+' ';
+      else interim+=r[0].transcript;
+    }
+    var display=(finalTranscript+interim).trim();
+    if(display)transcriptEl.innerHTML='<span>'+esc(display)+'</span><span class="listening-blip"></span>';
+    else transcriptEl.innerHTML='<span style="color:var(--muted)">Listening...</span><span class="listening-blip"></span>';
+
+    var last=r||e.results[e.results.length-1];
+    if(last)updateMicLevel(last[0].confidence||0.5);
+
+    if(e.results[e.results.length-1].isFinal){
+      var full=finalTranscript.trim();
+      if(full){
+        var cmd=full.toLowerCase().trim();
+        var wakeRe=/(?:^|\\s)(?:hey\\s+)?(?:kitt|hermes|jarvis)[,!?\\s]*/i;
+        var wakeMatch=cmd.match(wakeRe);
+        var afterWake=wakeMatch?cmd.replace(wakeRe,'').trim():'';
+
+        if(afterWake&&afterWake!==cmd){
+          processing=true;
+          stopRecognition();
+          callHermes(afterWake);
+          return;
+        }
+
+        if(wakeMatch&&!afterWake){
+          if(!speaking&&!processing){
+            playWake();
+            speak('Yes?');
+          }
+          return;
+        }
+
+        var dc=['hello','hey','hi','help','search','weather','open','time','date','thank','thanks','who are you','what can you','good morning','good evening','bye','how are you'];
+        var isDirect=false;
+        for(var i=0;i<dc.length;i++){if(cmd.includes(dc[i])){isDirect=true;break}}
+        if(isDirect){
+          processing=true;
+          stopRecognition();
+          callHermes(cmd);
+          return;
+        }
+      }
+    }
+  };
+
+  recognition.onerror=function(e){
+    if(e.error==='not-allowed'){setStatus('error','Microphone blocked');return}
+    if(e.error==='no-speech'||e.error==='abort'){scheduleWakeListening()}
+  };
+
+  recognition.onend=function(){
+    stopMicLevel();
+    if(!pushToTalk&&!processing)scheduleWakeListening();
+  };
+
+  try{recognition.start();isListening=true}
+  catch(e){scheduleWakeListening()}
+}
+
+function stopRecognition(){
+  if(recognition){
+    try{recognition.stop()}catch(e){}
+    recognition=null;
+  }
+  isListening=false;
+  micBtn.classList.remove('active','holding');
+  animateEq(false);
+  stopMicLevel();
+}
+
+function scheduleWakeListening(){
+  if(speaking||processing||pushToTalk)return;
+  if(isListening)return;
+  setTimeout(function(){startRecognition()},300);
+}
+
+// ── Push-to-talk ──
+micBtn.addEventListener('touchstart',function(e){
+  e.preventDefault();
+  if(isListening)stopRecognition();
+  pushToTalk=true;
+  micBtn.classList.add('holding');
+  var pttSR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!pttSR)return;
+  var pttRec=new pttSR();
+  pttRec.continuous=false;
+  pttRec.interimResults=false;
+  pttRec.lang='en-US';
+  pttRec.maxAlternatives=3;
+  setStatus('listening','');
+  micBtn.classList.add('active');
+  animateEq(true);
+  startMicLevel();
+  pttRec.onresult=function(e){
+    var text='';
+    for(var i=0;i<e.results.length;i++){
+      if(e.results[i].isFinal)text+=e.results[i][0].transcript;
+    }
+    text=text.trim();
+    if(text){
+      transcriptEl.innerHTML='<span>'+esc(text)+'</span>';
+      var cmd=text.toLowerCase().trim();
+      var afterWake=cmd.replace(/^(?:hey\\s+)?(?:kitt|hermes|jarvis)[,!?\\s]*/i,'').trim();
+      processing=true;
+      if(afterWake&&afterWake!==cmd){
+        callHermes(afterWake);
+      } else {
+        callHermes(text);
+      }
+    } else {
+      transcriptEl.innerHTML='<span style="color:rgba(255,26,26,0.4)">Did not catch that.</span>';
+    }
+    try{pttRec.stop()}catch(e){}
+    micBtn.classList.remove('active','holding');
+    animateEq(false);
+    stopMicLevel();
+  };
+  pttRec.onerror=function(){
+    micBtn.classList.remove('active','holding');
+    animateEq(false);
+    stopMicLevel();
+  };
+  pttRec.onend=function(){
+    micBtn.classList.remove('active','holding');
+    animateEq(false);
+    stopMicLevel();
+    pushToTalk=false;
+  };
+  try{pttRec.start()}catch(e){pushToTalk=false;micBtn.classList.remove('holding')}
+});
+
+micBtn.addEventListener('touchend',function(e){e.preventDefault()});
+micBtn.addEventListener('touchcancel',function(e){pushToTalk=false;micBtn.classList.remove('holding')});
+
+micBtn.addEventListener('mousedown',function(){
+  if(isListening)stopRecognition();
+  pushToTalk=true;
+  startRecognition();
+});
+micBtn.addEventListener('mouseup',function(){pushToTalk=false});
+micBtn.addEventListener('mouseleave',function(){
+  if(pushToTalk){pushToTalk=false;stopRecognition()}
+});
+
+// ── Text mode toggle ──
+textToggle.addEventListener('click',function(){
+  var open=textBar.classList.toggle('open');
+  textToggle.textContent=open?'🎤':'⌨';
+  if(open){
+    textInput.focus();
+    if(isListening)stopRecognition();
+  } else {
+    scheduleWakeListening();
+  }
+});
+
+function submitText(){
+  var text=textInput.value.trim();
+  if(!text)return;
+  textInput.value='';
+  processing=true;
+  stopRecognition();
+  textBar.classList.remove('open');
+  textToggle.textContent='⌨';
+  transcriptEl.innerHTML='<span>'+esc(text)+'</span>';
+  callHermes(text);
+}
+
+textSend.addEventListener('click',submitText);
+textInput.addEventListener('keydown',function(e){
+  if(e.key==='Enter')submitText();
+});
+
+// ── Ambient mode: triple-tap ──
+var tapCount=0,tapTimer=null,ambientMode=false;
+document.addEventListener('click',function(e){
+  if(e.target.closest('#mic')||e.target.closest('#ft a')||e.target.closest('#text-toggle')||e.target.closest('#text-bar')||e.target.closest('#pwa-banner'))return;
+  tapCount++;
+  if(tapCount===1){tapTimer=setTimeout(function(){tapCount=0},500)}
+  else if(tapCount>=3){
+    clearTimeout(tapTimer);tapCount=0;
+    ambientMode=!ambientMode;
+    document.body.classList.toggle('ambient',ambientMode);
+    setStatus(ambientMode?'ambient':'','');
+    clearTimeout(statusTimeout);
+  }
+});
+
+// ── PWA install prompt ──
+var deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();
+  deferredPrompt=e;
+  // Show banner after a short delay
+  setTimeout(function(){
+    if(!localStorage.getItem('kitt_pwa_dismissed'))pwaBanner.classList.add('show');
+  },5000);
+});
+
+btnPwaInstall.addEventListener('click',function(){
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function(){
+      deferredPrompt=null;
+      pwaBanner.classList.remove('show');
+    });
+  }
+});
+
+btnPwaClose.addEventListener('click',function(){
+  pwaBanner.classList.remove('show');
+  localStorage.setItem('kitt_pwa_dismissed','true');
+});
+
+// Also listen for the app being installed
+window.addEventListener('appinstalled',function(){
+  pwaBanner.classList.remove('show');
+  localStorage.setItem('kitt_pwa_dismissed','true');
+});
+
+// ── Init ──
+if(window.speechSynthesis){
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged=function(){window.speechSynthesis.getVoices()};
+}
+loadHistory();
+setTimeout(function(){try{startRecognition()}catch(e){setStatus('error','')}},800);
+if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').catch(function(){})}
+
+// Activate car silhouette
+kittCar.classList.add('active');
+
+console.log('KITT v6 — Jarvis ready');
+})();
+</script>
+</body>
+</html>

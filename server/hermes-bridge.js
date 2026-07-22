@@ -175,16 +175,20 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', pid: process.pid, uptime: process.uptime() });
 });
 
-// Landing page - full KITT UI
+// Landing page for browser access — full KITT UI
 app.get('/', (req, res) => {
   try {
-    let html = fs.readFileSync(TEMPLATE_PATH, 'utf8');
+    let html = fs.readFileSync(path.join(__dirname, 'kitt-template.html'), 'utf8');
     html = html.replace("'x-bridge-secret':'0'", "'x-bridge-secret':'" + BRIDGE_SECRET + "'");
-    res.type('html').send(html);
-  } catch (e) {
-    res.status(500).send('Template not found: ' + e.message);
+    res.set('Content-Type', 'text/html');
+    res.send(html);
+  } catch(e) {
+    res.status(500).send('Template error');
   }
 });
+
+// Serve public assets (images, etc.)
+app.use('/assets', express.static(path.join(__dirname, 'public')));
 
 // SVG icons
 app.get('/icon.svg', (req, res) => {
